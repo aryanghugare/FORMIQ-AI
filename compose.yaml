@@ -1,0 +1,13 @@
+services:
+  formiq:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      FORMIQ_DEMO: "true"
+      FORMIQ_SECURE_COOKIES: "false"
+    volumes:
+      - formiq-data:/app/data
+    restart: unless-stopped
+volumes:
+  formiq-data:

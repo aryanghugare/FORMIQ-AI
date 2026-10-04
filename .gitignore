@@ -1,0 +1,9 @@
+node_modules/
+.next*/
+.formiq*/
+.env*
+!.env.example
+playwright-report/
+test-results/
+*.tsbuildinfo
+.DS_Store

@@ -1,0 +1,35 @@
+{
+  "name": "formiq-ai",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=22.13.0"
+  },
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "build:check": "node scripts/check-build.mjs",
+    "start": "next start",
+    "typecheck": "tsc --noEmit",
+    "test": "node --import tsx --test tests/*.test.ts",
+    "test:e2e": "playwright test"
+  },
+  "dependencies": {
+    "next": "16.2.7",
+    "react": "19.2.4",
+    "react-dom": "19.2.4",
+    "lucide-react": "0.577.0",
+    "zod": "4.3.6"
+  },
+  "devDependencies": {
+    "@playwright/test": "https://registry.npmjs.org/@playwright/test/-/test-1.62.0.tgz",
+    "@types/node": "22.19.19",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "typescript": "5.9.3",
+    "tsx": "4.21.0"
+  },
+  "overrides": {
+    "esbuild": "0.27.4"
+  }
+}

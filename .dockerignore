@@ -1,0 +1,9 @@
+node_modules
+.next*
+.formiq*
+.git
+.env*
+playwright-report
+test-results
+*.tsbuildinfo
+*.pptx
