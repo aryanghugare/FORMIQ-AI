@@ -1,8 +1,16 @@
 "use client";
 import { useState } from "react";
 import { ArrowRight, ShieldCheck, Layers3, ScanLine } from "lucide-react";
-export default function Login({ demo }: { demo: boolean }) {
+import Link from "next/link";
+export default function Login({
+  demo,
+  signup = false,
+}: {
+  demo: boolean;
+  signup?: boolean;
+}) {
   const [email, setEmail] = useState(demo ? "designer@formiq.ai" : ""),
+    [name, setName] = useState(""),
     [password, setPassword] = useState(demo ? "Formiq@2026" : ""),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -11,10 +19,10 @@ export default function Login({ demo }: { demo: boolean }) {
     setBusy(true);
     setError("");
     try {
-      const r = await fetch("/api/auth/login", {
+      const r = await fetch(signup ? "/api/auth/register" : "/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify({ email, password, ...(signup ? { name } : {}) }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
@@ -70,8 +78,26 @@ export default function Login({ demo }: { demo: boolean }) {
           <span className="pill green">
             <span className="status-dot" /> DESIGN WORKSPACE
           </span>
-          <h2>Welcome to FORMIQ.</h2>
-          <p>Sign in to your design assurance workspace.</p>
+          <h2>{signup ? "Create your account." : "Welcome to FORMIQ."}</h2>
+          <p>
+            {signup
+              ? "Start your own design assurance workspace."
+              : "Sign in to your design assurance workspace."}
+          </p>
+          {signup && (
+            <label>
+              Full name
+              <input
+                name="name"
+                autoComplete="name"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                required
+                maxLength={100}
+                placeholder="Your name"
+              />
+            </label>
+          )}
           <label>
             Email address
             <input
@@ -81,6 +107,7 @@ export default function Login({ demo }: { demo: boolean }) {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               required
+              maxLength={160}
               placeholder="you@company.com"
             />
           </label>
@@ -89,10 +116,13 @@ export default function Login({ demo }: { demo: boolean }) {
             <input
               type="password"
               name="password"
-              autoComplete="current-password"
+              autoComplete={signup ? "new-password" : "current-password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               required
+              minLength={signup ? 10 : undefined}
+              maxLength={200}
+              placeholder={signup ? "At least 10 characters" : undefined}
             />
           </label>
           {error && (
@@ -101,9 +131,21 @@ export default function Login({ demo }: { demo: boolean }) {
             </div>
           )}
           <button disabled={busy} className="button primary full" type="submit">
-            {busy ? "Signing in…" : "Enter workspace"}
+            {busy
+              ? signup
+                ? "Creating account…"
+                : "Signing in…"
+              : signup
+                ? "Create account"
+                : "Enter workspace"}
             <ArrowRight size={17} />
           </button>
+          <p className="auth-switch">
+            {signup ? "Already have an account? " : "New to FORMIQ? "}
+            <Link href={signup ? "/login" : "/register"}>
+              {signup ? "Sign in" : "Create an account"}
+            </Link>
+          </p>
           {demo && (
             <div className="demo-login">
               <strong>Explore the working demo</strong>

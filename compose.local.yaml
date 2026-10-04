@@ -1,0 +1,16 @@
+# Real accounts and MongoDB storage; the image includes the DWG converter.
+services:
+  formiq:
+    build: .
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file:
+      - .env
+    environment:
+      FORMIQ_DEMO: "false"
+      FORMIQ_SECURE_COOKIES: "false"
+      # Host executable paths in .env are not valid inside the container.
+      ODA_CONVERTER_PATH: ""
+      DWG_CONVERTER_PATH: ""
+      LIBREDWG_CONVERTER_PATH: /usr/local/bin/dwg2dxf
+    restart: unless-stopped

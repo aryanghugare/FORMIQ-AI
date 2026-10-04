@@ -188,6 +188,15 @@ svg {
 .button.primary:hover {
   background: #244d37;
 }
+.button.danger {
+  background: #b13e35;
+  border-color: #b13e35;
+  color: white;
+}
+.button.danger:hover {
+  background: #963229;
+  border-color: #963229;
+}
 .button.small {
   padding: 7px 10px;
   min-height: 30px;
@@ -360,10 +369,23 @@ svg {
   left: 0;
   display: flex;
   flex-direction: column;
-  padding: 28px 18px 0;
+  padding: 0 18px;
   background: #fbfcf8;
   border-right: 1px solid var(--line);
   z-index: 30;
+}
+.sidebar-scroll {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  padding-top: 28px;
+}
+.sidebar-scroll > * {
+  flex-shrink: 0;
 }
 .sidebar .brand {
   padding-left: 7px;
@@ -468,12 +490,13 @@ svg {
   width: 100%;
 }
 .profile {
-  display: flex;
+  display: grid;
+  grid-template-columns: 32px minmax(0, 1fr);
+  flex-shrink: 0;
   align-items: center;
   gap: 9px;
   border-top: 1px solid var(--line);
-  padding: 19px 5px;
-  margin-top: 15px;
+  padding: 14px 5px max(14px, env(safe-area-inset-bottom));
 }
 .avatar {
   height: 32px;
@@ -498,6 +521,9 @@ svg {
   display: block;
   font-size: 11px;
   font-weight: 600;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 .profile small {
   display: block;
@@ -505,9 +531,23 @@ svg {
   color: #9aa390;
   margin-top: 5px;
 }
-.profile .icon-button {
-  margin-left: auto;
-  min-width: 25px;
+.sidebar-signout {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 36px;
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: #fff;
+  color: var(--green);
+  font-size: 12px;
+}
+.sidebar-signout:hover:not(:disabled) {
+  background: var(--soft-green);
 }
 .app-main {
   width: calc(100% - var(--sidebar));
@@ -1272,6 +1312,7 @@ tbody tr:hover {
 }
 .row-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 8px;
 }
@@ -2005,6 +2046,20 @@ tbody tr:hover {
   flex-direction: column;
   gap: 20px;
 }
+.modal-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  flex-wrap: wrap;
+  gap: 12px;
+  border-top: 1px solid var(--line);
+  padding-top: 20px;
+}
+.delete-drawing-message {
+  margin: 0;
+  line-height: 1.7;
+  color: #52614f;
+}
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2634,6 +2689,17 @@ tbody tr:hover {
 .login-form .alert {
   margin-bottom: 15px;
 }
+.auth-switch {
+  text-align: center;
+  margin: 20px 0;
+  font-size: 13px;
+}
+.auth-switch a {
+  color: var(--green);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
 .demo-login {
   background: #f2f6e9;
   border: 1px solid #e2ead4;
@@ -3190,6 +3256,10 @@ tbody tr:hover {
   .modal-form {
     padding: 22px;
     gap: 18px;
+  }
+  .modal-actions .button {
+    flex: 1 1 140px;
+    min-height: 42px;
   }
   .modal > header h2 {
     font-size: 19px;

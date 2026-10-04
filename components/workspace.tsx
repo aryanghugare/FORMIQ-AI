@@ -24,6 +24,8 @@ import {
   LogOut,
   Menu,
   Plus,
+  Pencil,
+  Trash2,
   ScanLine,
   Search,
   Settings2,
@@ -59,7 +61,15 @@ type View =
   | "memory"
   | "reports"
   | "settings";
-type Modal = "upload" | "project" | "analysis" | "memory" | "help" | null;
+type Modal =
+  | "upload"
+  | "project"
+  | "analysis"
+  | "memory"
+  | "help"
+  | "editDrawing"
+  | "deleteDrawing"
+  | null;
 const navigation = [
   { id: "overview", label: "Overview", icon: LayoutDashboard },
   { id: "projects", label: "Projects", icon: FolderKanban },
@@ -200,7 +210,9 @@ export default function Workspace({
     [projectId, setProjectId] = useState(initialData?.projects[0]?.id ?? ""),
     [search, setSearch] = useState(""),
     [modal, setModal] = useState<Modal>(null),
+    [managedDrawing, setManagedDrawing] = useState<Drawing>(),
     [busy, setBusy] = useState(false),
+    [signingOut, setSigningOut] = useState(false),
     [toast, setToast] = useState<{ message: string; error?: boolean }>(),
     [selected, setSelected] = useState<Issue>(),
     [notifications, setNotifications] = useState(false),
@@ -331,21 +343,23 @@ export default function Workspace({
     notes: string,
     expectedVersion: number,
   ) {
-    await mutate(
-      () =>
-        api(`issues/${id}`, json({ status, notes, expectedVersion }, "PATCH")),
-      "Designer decision saved.",
-    );
+    await mutate(async () => {
+      await api(
+        `issues/${id}`,
+        json({ status, notes, expectedVersion }, "PATCH"),
+      );
+      setSelected((current) => (current?.id === id ? undefined : current));
+    }, "Designer decision saved.");
   }
   async function signOut() {
-    if (mutationPending.current) return;
-    setBusy(true);
+    if (signingOut) return;
+    setSigningOut(true);
     try {
       await api("auth/logout", json({}));
-      window.location.assign("/login");
+      window.location.replace("/login");
     } catch (e) {
       notify(e instanceof Error ? e.message : "Unable to sign out.", true);
-      setBusy(false);
+      setSigningOut(false);
     }
   }
   if (!data)
@@ -517,78 +531,80 @@ export default function Workspace({
   return (
     <div className="app-shell">
       <aside className={`sidebar ${mobileNav ? "mobile-open" : ""}`}>
-        <a
-          className="brand"
-          href="/"
-          onClick={(e) => {
-            e.preventDefault();
-            navigate("overview");
-          }}
-        >
-          <span className="brand-icon">F</span> FORMIQ <small>AI</small>
-        </a>
-        <div className="workspace-label">DESIGN ASSURANCE</div>
-        <div className="sidebar-divider" />
-        <span className="nav-label">WORKSPACE</span>
-        <nav>
-          {navigation.map((item, index) => (
-            <div key={item.id}>
-              {index === 5 && (
-                <span className="nav-label secondary-label">
-                  KNOWLEDGE & OUTPUT
-                </span>
-              )}
-              <button
-                className={`nav-item ${view === item.id ? "active" : ""}`}
-                onClick={() => navigate(item.id)}
-              >
-                <item.icon size={18} />
-                <span>{item.label}</span>
-                {item.id === "issues" && open.length > 0 && (
-                  <span className="nav-count">{open.length}</span>
+        <div className="sidebar-scroll">
+          <a
+            className="brand"
+            href="/"
+            onClick={(e) => {
+              e.preventDefault();
+              navigate("overview");
+            }}
+          >
+            <span className="brand-icon">F</span> FORMIQ <small>AI</small>
+          </a>
+          <div className="workspace-label">DESIGN ASSURANCE</div>
+          <div className="sidebar-divider" />
+          <span className="nav-label">WORKSPACE</span>
+          <nav>
+            {navigation.map((item, index) => (
+              <div key={item.id}>
+                {index === 5 && (
+                  <span className="nav-label secondary-label">
+                    KNOWLEDGE & OUTPUT
+                  </span>
                 )}
+                <button
+                  className={`nav-item ${view === item.id ? "active" : ""}`}
+                  onClick={() => navigate(item.id)}
+                >
+                  <item.icon size={18} />
+                  <span>{item.label}</span>
+                  {item.id === "issues" && open.length > 0 && (
+                    <span className="nav-count">{open.length}</span>
+                  )}
+                </button>
+              </div>
+            ))}
+          </nav>
+          <div className="sidebar-bottom">
+            <div className="assistant-card">
+              <div className="assistant-icon">
+                <Sparkles size={17} />
+              </div>
+              <strong>AI assists. You approve.</strong>
+              <p>Every finding is a starting point for your expertise.</p>
+              <button onClick={() => setModal("help")}>
+                How FORMIQ works <ArrowUpRight size={13} />
               </button>
             </div>
-          ))}
-        </nav>
-        <div className="sidebar-bottom">
-          <div className="assistant-card">
-            <div className="assistant-icon">
-              <Sparkles size={17} />
-            </div>
-            <strong>AI assists. You approve.</strong>
-            <p>Every finding is a starting point for your expertise.</p>
-            <button onClick={() => setModal("help")}>
-              How FORMIQ works <ArrowUpRight size={13} />
+            <button
+              className={`nav-item ${view === "settings" ? "active" : ""}`}
+              onClick={() => navigate("settings")}
+            >
+              <Settings2 size={18} /> Settings
             </button>
+          </div>
+        </div>
+        <div className="profile">
+          <div className="avatar">
+            {data.user.name
+              .split(" ")
+              .map((n) => n[0])
+              .slice(0, 2)
+              .join("")}
+          </div>
+          <div>
+            <strong>{data.user.name}</strong>
+            <small>Design workspace</small>
           </div>
           <button
-            className={`nav-item ${view === "settings" ? "active" : ""}`}
-            onClick={() => navigate("settings")}
+            className="sidebar-signout"
+            aria-label="Sign out"
+            disabled={signingOut}
+            onClick={signOut}
           >
-            <Settings2 size={18} /> Settings
+            <LogOut size={16} /> {signingOut ? "Signing out…" : "Sign out"}
           </button>
-          <div className="profile">
-            <div className="avatar">
-              {data.user.name
-                .split(" ")
-                .map((n) => n[0])
-                .slice(0, 2)
-                .join("")}
-            </div>
-            <div>
-              <strong>{data.user.name}</strong>
-              <small>Design workspace</small>
-            </div>
-            <button
-              className="icon-button"
-              aria-label="Sign out"
-              disabled={busy}
-              onClick={signOut}
-            >
-              <LogOut size={16} />
-            </button>
-          </div>
         </div>
       </aside>
       <div className="app-main">
@@ -1152,6 +1168,28 @@ export default function Workspace({
                               </td>
                               <td>
                                 <div className="row-actions">
+                                  <button
+                                    className="button small"
+                                    disabled={busy}
+                                    onClick={() => {
+                                      setManagedDrawing(d);
+                                      setModal("editDrawing");
+                                    }}
+                                    aria-label={`Edit ${d.name}`}
+                                  >
+                                    <Pencil size={14} /> Edit
+                                  </button>
+                                  <button
+                                    className="button small"
+                                    disabled={busy}
+                                    onClick={() => {
+                                      setManagedDrawing(d);
+                                      setModal("deleteDrawing");
+                                    }}
+                                    aria-label={`Delete ${d.name}`}
+                                  >
+                                    <Trash2 size={14} /> Delete
+                                  </button>
                                   {d.format === "DWG" &&
                                     d.status !== "ready" && (
                                       <button
@@ -1169,7 +1207,11 @@ export default function Workspace({
                                             "DWG processed.",
                                           )
                                         }
-                                        title="Retry configured converter"
+                                        title={
+                                          data.converterAvailable
+                                            ? "Retry DWG conversion"
+                                            : "Start the Docker app or install a DWG converter, then refresh"
+                                        }
                                       >
                                         Retry
                                       </button>
@@ -1666,6 +1708,66 @@ export default function Workspace({
           />
         </ModalFrame>
       )}
+      {modal === "editDrawing" && managedDrawing && (
+        <ModalFrame
+          title="Edit drawing details"
+          subtitle="Update the file name, revision, or drawing discipline."
+          onClose={closeModal}
+        >
+          <DrawingInfoForm
+            drawing={managedDrawing}
+            busy={busy}
+            onSubmit={(input) =>
+              mutate(
+                () =>
+                  api(`drawings/${managedDrawing.id}`, json(input, "PATCH")),
+                "Drawing details updated.",
+              )
+            }
+          />
+        </ModalFrame>
+      )}
+      {modal === "deleteDrawing" && managedDrawing && (
+        <ModalFrame
+          title="Delete drawing?"
+          subtitle={managedDrawing.name}
+          onClose={closeModal}
+        >
+          <div className="modal-form">
+            <p className="delete-drawing-message">
+              This permanently removes the drawing and its stored file. Drawings
+              used in an analysis cannot be deleted.
+            </p>
+            <div className="modal-actions">
+              <button className="button" disabled={busy} onClick={closeModal}>
+                Cancel
+              </button>
+              <button
+                className="button danger"
+                disabled={busy}
+                onClick={() =>
+                  mutate(
+                    () =>
+                      api<{ ok: boolean; warning?: string }>(
+                        `drawings/${managedDrawing.id}`,
+                        {
+                          method: "DELETE",
+                        },
+                      ),
+                    "Drawing deleted.",
+                    (result) => ({
+                      message: result.warning ?? "Drawing deleted.",
+                      error: Boolean(result.warning),
+                    }),
+                  )
+                }
+              >
+                <Trash2 size={16} /> {busy ? "Deleting…" : "Delete drawing"}
+              </button>
+            </div>
+          </div>
+        </ModalFrame>
+      )}
       {modal === "upload" && project && (
         <ModalFrame
           title="Upload a drawing"
@@ -1948,6 +2050,69 @@ function ProjectForm({
             <Plus size={15} />
           )}{" "}
           Create project
+        </button>
+      </div>
+    </form>
+  );
+}
+function DrawingInfoForm({
+  drawing,
+  busy,
+  onSubmit,
+}: {
+  drawing: Drawing;
+  busy: boolean;
+  onSubmit: (input: Pick<Drawing, "name" | "revision" | "discipline">) => void;
+}) {
+  return (
+    <form
+      className="modal-form"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const values = new FormData(event.currentTarget);
+        onSubmit({
+          name: String(values.get("name")),
+          revision: String(values.get("revision")),
+          discipline: String(values.get("discipline")) as Drawing["discipline"],
+        });
+      }}
+    >
+      <label>
+        File name
+        <input
+          name="name"
+          defaultValue={drawing.name}
+          required
+          maxLength={160}
+        />
+      </label>
+      <div className="form-row">
+        <label>
+          Drawing discipline
+          <select name="discipline" defaultValue={drawing.discipline}>
+            <option value="architecture">Architecture</option>
+            <option value="structure">Structure</option>
+            <option value="formwork">Formwork</option>
+          </select>
+        </label>
+        <label>
+          Revision identifier
+          <input
+            name="revision"
+            defaultValue={drawing.revision}
+            required
+            maxLength={160}
+          />
+        </label>
+      </div>
+      <p className="helper-text">
+        Keep the .{drawing.format.toLowerCase()} extension. Drawings used in an
+        analysis are preserved; upload a new revision for later changes.
+      </p>
+      <div className="form-footer">
+        <span>Original geometry retained.</span>
+        <button className="button primary" disabled={busy}>
+          <Check size={16} /> {busy ? "Saving…" : "Save details"}
         </button>
       </div>
     </form>
@@ -2453,9 +2618,9 @@ function SettingsPanel({
             </Pill>
           </div>
           <p className="helper-text">
-            Install ODA File Converter and configure its executable path in the
-            server environment to process DWG files. Saved originals can then be
-            reprocessed from the drawing library.
+            {converterAvailable
+              ? "DWG conversion is available. Click Retry in the drawing library to process saved originals."
+              : "The Docker app includes DWG conversion. Start it, or install LibreDWG / ODA File Converter locally, then refresh this page."}
           </p>
           <div className="settings-note">
             <ShieldCheck size={18} />
@@ -2496,6 +2661,8 @@ function IssueDrawer({
     setStatus(i.status);
   }, [i.id, i.notes, i.status]);
   const dialogRef = useDialogFocus<HTMLElement>(onClose);
+  const noteRequired = status !== "open";
+  const missingNote = noteRequired && !notes.trim();
   const similar = memory.filter((m) =>
     m.tags.some((t) => t.toLowerCase() === i.kind.toLowerCase() || t === i.tag),
   );
@@ -2642,12 +2809,26 @@ function IssueDrawer({
                 placeholder="Record what you verified, your reasoning, and any required follow-up…"
                 value={notes}
                 disabled={busy}
+                aria-required={noteRequired}
+                aria-describedby={
+                  missingNote ? `review-note-${i.id}` : undefined
+                }
                 onChange={(e) => setNotes(e.target.value)}
               />
             </label>
+            {missingNote && (
+              <p
+                id={`review-note-${i.id}`}
+                className="alert warning"
+                role="status"
+              >
+                Add a designer note to save this decision. Explain what you
+                verified or why you chose {statusLabels[status].toLowerCase()}.
+              </p>
+            )}
             <p className="helper-text">
-              Accept confirms the finding is valid. Rejection and investigation
-              should explain your reasoning. Every decision requires a note.
+              Accepted confirms the finding is valid; it does not resolve it.
+              Accepted, Rejected, and Investigating require a designer note.
             </p>
             {i.reviewedBy && (
               <p className="review-attribution">
@@ -2663,7 +2844,7 @@ function IssueDrawer({
           </button>
           <button
             className="button primary"
-            disabled={busy || (status !== "open" && !notes.trim())}
+            disabled={busy || missingNote}
             onClick={() => onReview(i.id, status, notes, i.version ?? 0)}
           >
             {busy ? (

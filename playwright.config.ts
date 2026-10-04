@@ -29,6 +29,7 @@ export default defineConfig({
     reuseExistingServer: false,
     timeout: 120000,
     env: {
+      MONGODB_URI: "",
       FORMIQ_DEMO: "true",
       FORMIQ_SECURE_COOKIES: "false",
       FORMIQ_DATA_DIR: ".formiq-e2e",

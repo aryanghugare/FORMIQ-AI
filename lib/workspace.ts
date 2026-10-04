@@ -1,5 +1,7 @@
-import { demoEnabled, list, listDrawingSummaries } from "./db";
+import { demoEnabled } from "./db";
+import { list, drawingSummaries } from "./store";
 import { converterAvailable } from "./converter";
+import { withOwner } from "./ownership";
 import type {
   AnalysisRun,
   AuditEvent,
@@ -10,16 +12,16 @@ import type {
   User,
   WorkspaceData,
 } from "./types";
-export function loadWorkspace(user: User): WorkspaceData {
-  return {
+export async function loadWorkspace(user: User): Promise<WorkspaceData> {
+  return withOwner(user.id, async () => ({
     user,
-    projects: list<Project>("project"),
-    drawings: listDrawingSummaries(),
-    issues: list<Issue>("issue"),
-    runs: list<AnalysisRun>("run"),
-    memory: list<MemoryCase>("memory"),
-    audit: list<AuditEvent>("audit"),
+    projects: await list<Project>("project"),
+    drawings: await drawingSummaries(),
+    issues: await list<Issue>("issue"),
+    runs: await list<AnalysisRun>("run"),
+    memory: await list<MemoryCase>("memory"),
+    audit: await list<AuditEvent>("audit"),
     converterAvailable: converterAvailable(),
     demoEnabled: demoEnabled(),
-  };
+  }));
 }

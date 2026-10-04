@@ -31,14 +31,14 @@ function assertPlainData(value: unknown, path = "initialData") {
 test("authenticated workspace props contain no raw SQLite rows", async () => {
   const session = await login("designer@formiq.ai", "Formiq@2026");
   assert.ok(session);
-  const user = userForToken(session.token);
+  const user = await userForToken(session.token);
   assert.ok(user);
   // Check before JSON serialization, which hides null-prototype SQLite rows
   // and allowed the API tests to pass despite the page failing to render.
-  const workspace = loadWorkspace(user);
+  const workspace = await loadWorkspace(user);
   assertPlainData(workspace);
   assert.deepEqual(workspace.user, session.user);
   assert.deepEqual(Object.keys(workspace.user).sort(), ["email", "id", "name"]);
-  assert.equal(userForToken("invalid-session"), undefined);
-  assert.equal(userForToken(), undefined);
+  assert.equal(await userForToken("invalid-session"), undefined);
+  assert.equal(await userForToken(), undefined);
 });

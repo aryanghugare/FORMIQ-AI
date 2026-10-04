@@ -1,11 +1,18 @@
 import { test, after } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtempSync, rmSync, writeFileSync, chmodSync } from "node:fs";
+import {
+  mkdtempSync,
+  rmSync,
+  writeFileSync,
+  chmodSync,
+  readFileSync,
+  existsSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NextRequest } from "next/server";
 import { demoDxf } from "../lib/demo";
-import { POST, GET, PATCH } from "../app/api/[...path]/route";
+import { POST, GET, PATCH, DELETE } from "../app/api/[...path]/route";
 import { db, list } from "../lib/db";
 import type {
   Drawing,
@@ -20,6 +27,7 @@ process.env.FORMIQ_DEMO = "true";
 process.env.FORMIQ_SECURE_COOKIES = "false";
 delete process.env.ODA_CONVERTER_PATH;
 delete process.env.DWG_CONVERTER_PATH;
+process.env.LIBREDWG_CONVERTER_PATH = join(dir, "missing-converter");
 after(() => {
   db().close();
   rmSync(dir, { recursive: true, force: true });
@@ -44,8 +52,16 @@ async function call(
     };
   }
   const request = new NextRequest("http://localhost:3000/api/" + path, options);
-  return (method === "GET" ? GET : method === "PATCH" ? PATCH : POST)(request, {
-    params: Promise.resolve({ path: path.split("/") }),
+  return (
+    method === "GET"
+      ? GET
+      : method === "PATCH"
+        ? PATCH
+        : method === "DELETE"
+          ? DELETE
+          : POST
+  )(request, {
+    params: Promise.resolve({ path: path.split("?")[0].split("/") }),
   });
 }
 function upload(
@@ -89,11 +105,16 @@ test("full authenticated API workflow persists CAD analysis and designer review"
   assert.equal(created.status, 201);
   const project: Project = await created.json();
   const drawings: Drawing[] = [];
+  const samples = {
+    old: "ARCH-L12-Rev-05.dxf",
+    new: "ARCH-L12-Rev-06.dxf",
+    formwork: "FW-L12.dxf",
+  };
   for (const r of ["old", "new", "formwork"] as const) {
     const response = await upload(
       project.id,
-      demoDxf(r),
-      `${r}.dxf`,
+      readFileSync(join("public/samples", samples[r]), "utf8"),
+      samples[r],
       r === "formwork" ? "formwork" : "architecture",
       r,
     );
@@ -115,6 +136,21 @@ test("full authenticated API workflow persists CAD analysis and designer review"
   const issue = result.issues.find(
     (i) => i.tag === "D14" && i.rule === "FW-01",
   )!;
+  assert.equal(issue.current, 1000);
+  assert.equal(issue.formwork, 900);
+  assert.equal(result.run.checks, 8);
+  const structureResponse = await upload(
+    project.id,
+    readFileSync(join("public/samples", samples.new), "utf8"),
+    "structure-reference.dxf",
+    "structure",
+  );
+  assert.equal(structureResponse.status, 201);
+  const structure: Drawing = await structureResponse.json();
+  assert.equal(
+    (await call("analyze", "POST", { ...input, newId: structure.id })).status,
+    400,
+  );
   assert.equal(
     (
       await call(`issues/${issue.id}`, "PATCH", {
@@ -181,7 +217,10 @@ test("full authenticated API workflow persists CAD analysis and designer review"
   );
   const original = await call(`drawings/${drawings[0].id}/file`);
   assert.equal(original.status, 200);
-  assert.equal(await original.text(), demoDxf("old"));
+  assert.equal(
+    await original.text(),
+    readFileSync(join("public/samples", samples.old), "utf8"),
+  );
   const malformed = await upload(project.id, "not a DXF", "bad.dxf");
   assert.equal(malformed.status, 201);
   assert.equal((await malformed.json()).status, "failed");
@@ -377,5 +416,294 @@ test("login normalizes email and invalid report requests do not create success a
       (a) => a.action === "Report generated",
     ).length,
     before,
+  );
+});
+test("public sign-up, login and logout keep projects, CAD files and reviews private to each account", async () => {
+  cookie = "";
+  const password = "A-public-signup-password";
+  assert.equal(
+    (
+      await call("auth/register", "POST", {
+        name: "User",
+        email: "not-email",
+        password,
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await call("auth/register", "POST", {
+        name: "User",
+        email: "short@example.com",
+        password: "short",
+      })
+    ).status,
+    400,
+  );
+  assert.equal(
+    (
+      await call("auth/register", "POST", {
+        name: "",
+        email: "empty@example.com",
+        password,
+      })
+    ).status,
+    400,
+  );
+  const signup = await call("auth/register", "POST", {
+    name: "Alice",
+    email: " ALICE@EXAMPLE.COM ",
+    password,
+  });
+  assert.equal(signup.status, 201);
+  assert.equal((await signup.json()).user.email, "alice@example.com");
+  assert.match(signup.headers.get("set-cookie")!, /HttpOnly/);
+  const aliceCookie = signup.headers.get("set-cookie")!.split(";")[0];
+  cookie = aliceCookie;
+  assert.deepEqual((await (await call("workspace")).json()).projects, []);
+  assert.equal(
+    (
+      await call("auth/register", "POST", {
+        name: "Duplicate",
+        email: "alice@example.com",
+        password,
+      })
+    ).status,
+    409,
+  );
+  const created = await call("projects", "POST", {
+    name: "Private project",
+    code: "PRIVATE-01",
+    location: "Mumbai",
+  });
+  assert.equal(created.status, 201);
+  const project: Project = await created.json();
+  const drawings: Drawing[] = [];
+  for (const [name, discipline] of [
+    ["ARCH-L12-Rev-05.dxf", "architecture"],
+    ["ARCH-L12-Rev-06.dxf", "architecture"],
+    ["FW-L12.dxf", "formwork"],
+  ]) {
+    const response = await upload(
+      project.id,
+      readFileSync(join("public/samples", name), "utf8"),
+      name,
+      discipline,
+      name,
+    );
+    assert.equal(response.status, 201);
+    drawings.push(await response.json());
+  }
+  const analysis = await call("analyze", "POST", {
+    projectId: project.id,
+    oldId: drawings[0].id,
+    newId: drawings[1].id,
+    formworkId: drawings[2].id,
+  });
+  assert.equal(analysis.status, 201);
+  const result = await analysis.json();
+  assert.equal(result.issues.length, 7);
+  const memory = await call("memory", "POST", {
+    title: "Alice's private reference",
+    category: "Openings",
+    project: "PRIVATE-01",
+    drawing: "FW-L12",
+    reference: "RFI-1",
+    description: "The opening increased by 100 mm.",
+    resolution: "Update formwork before release.",
+    tags: ["Door"],
+    sourceUrl: "https://example.com/reference",
+  });
+  assert.equal(memory.status, 201);
+  const bob = await call("auth/register", "POST", {
+    name: "Bob",
+    email: "bob@example.com",
+    password,
+  });
+  assert.equal(bob.status, 201);
+  cookie = bob.headers.get("set-cookie")!.split(";")[0];
+  const bobWorkspace = await (await call("workspace")).json();
+  for (const section of [
+    "projects",
+    "drawings",
+    "issues",
+    "runs",
+    "memory",
+    "audit",
+  ])
+    assert.deepEqual(
+      bobWorkspace[section],
+      [],
+      `Bob must not see Alice's ${section}`,
+    );
+  const [aliceParallel, bobParallel] = await Promise.all([
+    call("workspace", "GET", undefined, { Cookie: aliceCookie }),
+    call("workspace"),
+  ]);
+  assert.equal((await aliceParallel.json()).projects[0].id, project.id);
+  assert.deepEqual((await bobParallel.json()).projects, []);
+  assert.equal(
+    (
+      await call(`projects/${project.id}`, "PATCH", {
+        tolerance: 5,
+        bomReleased: true,
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (
+      await upload(
+        project.id,
+        readFileSync(join("public/samples", "FW-L12.dxf"), "utf8"),
+        "forbidden.dxf",
+        "formwork",
+      )
+    ).status,
+    404,
+  );
+  assert.equal((await call(`drawings/${drawings[0].id}`)).status, 404);
+  assert.equal((await call(`drawings/${drawings[0].id}/file`)).status, 404);
+  assert.equal(
+    (await call(`drawings/${drawings[0].id}`, "DELETE")).status,
+    404,
+  );
+  assert.equal(
+    (
+      await call(`drawings/${drawings[0].id}`, "PATCH", {
+        name: "stolen.dxf",
+        revision: "Rev.10",
+        discipline: "structure",
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await call(`drawings/${drawings[0].id}/retry`, "POST", {})).status,
+    404,
+  );
+  assert.equal(
+    (
+      await call(`issues/${result.issues[0].id}`, "PATCH", {
+        status: "accepted",
+        notes: "Unauthorized change",
+        expectedVersion: 0,
+      })
+    ).status,
+    404,
+  );
+  assert.equal(
+    (await call(`reports?projectId=${project.id}&format=html`)).status,
+    404,
+  );
+  assert.equal(
+    (
+      await call("analyze", "POST", {
+        projectId: project.id,
+        oldId: drawings[0].id,
+        newId: drawings[1].id,
+        formworkId: drawings[2].id,
+      })
+    ).status,
+    404,
+  );
+  // Project identifiers can be reused by different accounts.
+  assert.equal(
+    (
+      await call("projects", "POST", {
+        name: "Bob's project",
+        code: "PRIVATE-01",
+        location: "Delhi",
+      })
+    ).status,
+    201,
+  );
+  assert.equal((await call("auth/logout", "POST", {})).status, 200);
+  assert.equal((await call("workspace")).status, 401);
+  const signIn = await call("auth/login", "POST", {
+    email: "alice@example.com",
+    password,
+  });
+  assert.equal(signIn.status, 200);
+  cookie = signIn.headers.get("set-cookie")!.split(";")[0];
+  const alice = await (await call("workspace")).json();
+  assert.deepEqual(
+    alice.projects.map((p: Project) => p.id),
+    [project.id],
+  );
+  assert.equal(alice.drawings.length, 3);
+  assert.equal(alice.memory.length, 1);
+  assert.equal(alice.issues.length, 7);
+  assert.equal(
+    (await call(`reports?projectId=${project.id}&format=csv`)).status,
+    200,
+  );
+});
+test("drawing metadata edits retain geometry; deletion removes originals and protects analysis sources", async () => {
+  const workspace = await (await call("workspace")).json();
+  const project = workspace.projects[0];
+  const source = readFileSync(
+    join("public/samples", "ARCH-L12-Rev-05.dxf"),
+    "utf8",
+  );
+  const uploaded: Drawing = await (
+    await upload(project.id, source, "editable.dxf")
+  ).json();
+  assert.equal(
+    (
+      await call(`drawings/${uploaded.id}`, "PATCH", {
+        name: "renamed.dxf",
+        revision: "Rev.07",
+        discipline: "structure",
+      })
+    ).status,
+    200,
+  );
+  const updated: Drawing = await (await call(`drawings/${uploaded.id}`)).json();
+  assert.equal(updated.name, "renamed.dxf");
+  assert.equal(updated.revision, "Rev.07");
+  assert.equal(updated.discipline, "structure");
+  assert.deepEqual(updated.model, uploaded.model);
+  assert.equal(
+    await (await call(`drawings/${uploaded.id}/file`)).text(),
+    source,
+  );
+  for (const name of ["wrong.dwg", "../unsafe.dxf"]) {
+    assert.equal(
+      (
+        await call(`drawings/${uploaded.id}`, "PATCH", {
+          name,
+          revision: "Rev.07",
+          discipline: "structure",
+        })
+      ).status,
+      400,
+    );
+  }
+  const protectedSource: Drawing = workspace.drawings[0];
+  assert.equal(
+    (await call(`drawings/${protectedSource.id}`, "DELETE")).status,
+    409,
+  );
+  assert.equal(
+    (
+      await call(`drawings/${protectedSource.id}`, "PATCH", {
+        name: protectedSource.name,
+        revision: "Rev.99",
+        discipline: protectedSource.discipline,
+      })
+    ).status,
+    409,
+  );
+  assert.equal((await call(`drawings/${uploaded.id}`, "DELETE")).status, 200);
+  assert.equal((await call(`drawings/${uploaded.id}`)).status, 404);
+  assert.equal((await call(`drawings/${uploaded.id}/file`)).status, 404);
+  assert.equal(existsSync(join(dir, "uploads", `${uploaded.id}.dxf`)), false);
+  const refreshed = await (await call("workspace")).json();
+  assert.ok(
+    refreshed.audit.some(
+      (event: AuditEvent) => event.action === "Drawing deleted",
+    ),
   );
 });

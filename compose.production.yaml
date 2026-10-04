@@ -1,0 +1,13 @@
+# MongoDB stores accounts, project records, parsed geometry and original drawings.
+# Place an HTTPS reverse proxy in front of localhost:3000.
+services:
+  formiq:
+    build: .
+    ports:
+      - "127.0.0.1:3000:3000"
+    environment:
+      MONGODB_URI: ${MONGODB_URI:?Set MONGODB_URI}
+      MONGODB_DB: ${MONGODB_DB:-formiq}
+      FORMIQ_DEMO: "false"
+      FORMIQ_SECURE_COOKIES: "true"
+    restart: unless-stopped

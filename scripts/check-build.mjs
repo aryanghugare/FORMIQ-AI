@@ -68,6 +68,7 @@ try {
         FORMIQ_BUILD_DIR: ".next",
         FORMIQ_DATA_DIR: path.join(staging, ".formiq"),
         FORMIQ_DEMO: "true",
+        MONGODB_URI: "",
         FORMIQ_ADMIN_EMAIL: "",
         FORMIQ_ADMIN_PASSWORD: "",
         ODA_CONVERTER_PATH: "",

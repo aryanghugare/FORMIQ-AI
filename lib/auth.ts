@@ -1,13 +1,27 @@
-import { randomBytes, createHash, timingSafeEqual, scrypt } from "node:crypto";
+import {
+  randomBytes,
+  randomUUID,
+  createHash,
+  timingSafeEqual,
+  scrypt,
+} from "node:crypto";
 import { promisify } from "node:util";
 import { HttpError } from "./errors";
 import { cookies } from "next/headers";
-import { db } from "./db";
+import { db, transaction } from "./db";
+import { mongoEnabled } from "./mongo";
+import {
+  mongoLogin,
+  mongoLogout,
+  mongoUserForToken,
+  mongoRegister,
+} from "./mongo-auth";
 import type { User } from "./types";
 export const SESSION_COOKIE = "formiq_session";
 const digest = (token: string) =>
   createHash("sha256").update(token).digest("hex");
-export function userForToken(token?: string): User | undefined {
+export async function userForToken(token?: string): Promise<User | undefined> {
+  if (mongoEnabled()) return mongoUserForToken(token);
   if (!token) return;
   const row = db()
     .prepare(
@@ -27,10 +41,35 @@ export async function currentUser() {
   return userForToken((await cookies()).get(SESSION_COOKIE)?.value);
 }
 const deriveKey = promisify(scrypt);
+export async function register(
+  name: string,
+  email: string,
+  password: string,
+): Promise<{ user: User; token: string }> {
+  if (mongoEnabled()) return mongoRegister(name, email, password);
+  const salt = randomBytes(16).toString("hex"),
+    hash = (await deriveKey(password, salt, 64)) as Buffer;
+  const user = {
+    id: randomUUID(),
+    name: name.trim(),
+    email: email.trim().toLowerCase(),
+  };
+  const token = randomBytes(32).toString("hex");
+  transaction(() => {
+    db()
+      .prepare("INSERT INTO users (id,name,email,salt,hash) VALUES (?,?,?,?,?)")
+      .run(user.id, user.name, user.email, salt, hash.toString("hex"));
+    db()
+      .prepare("INSERT INTO sessions (token,userId,expires) VALUES (?,?,?)")
+      .run(digest(token), user.id, Date.now() + 7 * 86400000);
+  });
+  return { user, token };
+}
 export async function login(
   email: string,
   password: string,
 ): Promise<{ user: User; token: string } | undefined> {
+  if (mongoEnabled()) return mongoLogin(email, password);
   const key = email.trim().toLowerCase(),
     now = Date.now();
   // Reserve an attempt before the asynchronous password derivation. Parallel requests
@@ -73,7 +112,8 @@ export async function login(
     .run(digest(token), user.id, now + 7 * 24 * 60 * 60 * 1000);
   return { user: { id: user.id, name: user.name, email: user.email }, token };
 }
-export function logout(token?: string) {
+export async function logout(token?: string) {
+  if (mongoEnabled()) return mongoLogout(token);
   if (token)
     db().prepare("DELETE FROM sessions WHERE token=?").run(digest(token));
 }

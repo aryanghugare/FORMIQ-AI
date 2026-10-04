@@ -1,0 +1,18 @@
+# One Next.js service with public registration and private user workspaces.
+services:
+  - type: web
+    name: formiq
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    plan: starter
+    healthCheckPath: /api/health
+    envVars:
+      - key: MONGODB_URI
+        sync: false
+      - key: MONGODB_DB
+        value: formiq
+      - key: FORMIQ_DEMO
+        value: "false"
+      - key: FORMIQ_SECURE_COOKIES
+        value: "true"

@@ -47,6 +47,7 @@ export interface Project {
   bomReleased: boolean;
 }
 export interface Drawing {
+  fileId?: string;
   id: string;
   projectId: string;
   name: string;

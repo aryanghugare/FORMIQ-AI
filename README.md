@@ -1,207 +1,111 @@
 # FORMIQ AI
 
-A working Next.js application for Kumkang Kind’s **Formwork Intelligence, Quality & Revision Assistant**, based on the supplied innovation-challenge presentation.
+A Next.js application where users create an account, sign in, and use a private workspace to upload CAD drawings, compare architectural revisions against formwork, review findings and export reports. The original project presentation is included in the repository.
 
-It includes the frontend, backend API, local authentication, persistent SQLite storage, CAD uploads, a 2D drawing viewer, revision checks, designer review, Design Memory, and report exports.
+## Run with MongoDB
 
-## Run locally
-
-Requires **Node.js 22.13 or newer**. Node 22.22 is the tested version. SQLite is provided by Node’s built-in `node:sqlite` module; Node 22 may print an experimental-module warning.
+Requires Node.js 22.13+ and MongoDB Atlas (or a MongoDB replica set, for transactions).
 
 ```sh
 npm ci
-npm run dev
+cp .env.example .env
 ```
 
-Open **http://localhost:3000**.
-
-Development enables an illustrative demo workspace by default:
-
-- Email: `designer@formiq.ai`
-- Password: `Formiq@2026`
-
-Dependencies have already been installed in this workspace. You can start directly with `npm run dev`.
-
-The demo contains three actual ASCII DXF fixtures, which are parsed and analyzed when the database is initialized. Door D14 changes from **900 mm to 1000 mm**, while formwork remains **900 mm**. Window W03 and beam B02 also change, and a new door D21 appears. The rules produce **seven findings**, including separate revision and coordination findings.
-
-The sample project and memory references are clearly labeled as illustrative. No real Kumkang project approval is implied.
-
-## Complete review workflow
-
-1. Sign in and create a project with its name, code, and location.
-2. Upload old architecture, new architecture, and current formwork drawings. Set each discipline and revision identifier. Structure drawings can also be stored and viewed.
-3. Check the extraction status in Drawing Library. Original uploads remain downloadable.
-4. Run analysis and explicitly select the three drawings to compare.
-5. Open Revision Review to switch between previous, latest, and overlay views; pan, zoom, toggle layers, and inspect marked findings.
-6. In Issue Register, filter findings by priority or review status. Accept, reject, or investigate a finding with a designer note.
-7. Generate a marked-up HTML report. Use its **Print / save as PDF** button to produce a PDF, or export the issue register as CSV.
-8. Add verified previous solutions to Design Memory with an HTTPS source link. Search by condition, project, RFI, or tags.
-
-Every analysis run is retained. Re-running the analysis creates a new register; earlier decisions remain available through the earlier run. Reviews record the designer identity and timestamp, and an audit log records uploads, analyses, decisions, parameter changes, and report generation.
-
-**Accepting a finding confirms that the finding is valid. It never approves or releases a drawing.**
-
-## CAD support and its limits
-
-### DXF
-
-The current checker supports **ASCII DXF**, focusing on 2D model space:
-
-- LINE, LWPOLYLINE, 2D POLYLINE, CIRCLE, ARC, TEXT, MTEXT, ATTRIB, linear DIMENSION, and uniform INSERT block transformations.
-- Millimetres, centimetres, metres, inches, and feet, normalized to millimetres using `$INSUNITS`.
-- Tagged linear dimensions, with group 42 measurements or supported endpoint geometry.
-- Explicit schedule annotations such as `D14 = 1000 mm`.
-
-To associate measurements reliably, use a stable tag on the dimension layer, such as `DOOR_D14`, `WINDOW_W03`, `BEAM_B02`, or `WALL_W12`, or include the tag in the dimension’s text. Each checked dimension needs a unique tag. Multiple measurements sharing a tag produce an ambiguity finding rather than a guessed comparison.
-
-The parser does not infer semantic relationships from arbitrary untagged linework or nearby text. Missing units or missing tagged measurements block numerical analysis. Unsupported geometry is identified in extraction notes; a processed drawing is not a certification of complete extraction.
-
-Binary DXF, paper space, 3D models, meshes, splines, external references, non-uniform block scales, array inserts, and angular/radial/ordinate dimensions are outside the current checker. Polyline bulges are approximate in the viewer. Uniformly rotated block arcs retain their transformed orientation in the viewer and reports. The viewer provides geometric overlays; automatic findings are based on explicitly tagged linear measurements, not a comprehensive geometric-difference engine.
-
-Uploads are limited to 30 MB; converted DXF to 50 MB; expanded geometry to 100,000 entities and 200,000 polyline vertices.
-
-### DWG
-
-DWG originals are accepted, signature-checked, stored, and tracked. **DWG viewing and analysis require a separately installed CAD converter.** No DWG converter is bundled or installed in this workspace.
-
-For [ODA File Converter](https://www.opendesign.com/guestfiles/oda_file_converter), set its executable path in `.env.local`:
+If `.env` already exists, edit it rather than overwriting it. Set:
 
 ```dotenv
-ODA_CONVERTER_PATH=/Applications/ODAFileConverter.app/Contents/MacOS/ODAFileConverter
-```
-
-The adapter invokes the executable directly with a dedicated input directory, output directory, `ACAD2018`, `DXF`, no recursion, audit enabled, and a DWG filter. It uses isolated temporary directories, a two-minute timeout, and removes temporary files after processing. On headless Linux, the adapter defaults `QT_QPA_PLATFORM` to `offscreen`; install the converter’s required platform libraries separately.
-
-Alternatively, configure a custom conversion executable:
-
-```dotenv
-DWG_CONVERTER_PATH=/absolute/path/to/converter-wrapper
-```
-
-The executable contract is:
-
-```text
-converter-wrapper /absolute/input.dwg /absolute/output.dxf
-```
-
-It must exit successfully and produce an ASCII DXF. ODA takes precedence if both paths are set. The paths are executable paths, not shell commands.
-
-Restart the server after changing converter configuration. Drawings awaiting conversion can then be reprocessed using **Retry** in Drawing Library. You can also export ASCII DXF from AutoCAD and upload that revision.
-
-The converter integration is tested with a controlled executable fixture. Actual ODA conversion against production DWGs still requires the installed converter and representative drawings.
-
-## Implemented checks
-
-| Rule   | Check                                                                 |
-| ------ | --------------------------------------------------------------------- |
-| REV-01 | Tagged dimension changes between architectural revisions              |
-| FW-01  | Door/window dimensions against current formwork                       |
-| FW-02  | Beam/wall/slab tagged dimensions against current formwork             |
-| REV-02 | New tagged elements and their formwork coverage                       |
-| REV-03 | Removed architectural elements, especially those retained in formwork |
-| QC-01  | Missing matching formwork measurements                                |
-| QC-02  | Ambiguous tags with multiple measurements                             |
-| QC-03  | Drawing units and tagged-measurement validation                       |
-
-Tolerance is configurable per project in Settings. By default, differences at or below **1 mm** are ignored.
-
-BOM/fabrication impact is included only after the designer explicitly confirms fabrication/BOM release in Settings. This records potential impact; item-level BOM ingestion and tracing are not implemented.
-
-The checking engine is deterministic and explainable. This prototype uses no LLM credentials or external AI calls. Design Memory uses text search and tag matching over manually verified, source-linked records. Its illustrative seed references are not real approved project documents.
-
-## Storage and authentication
-
-Data lives in `.formiq/` by default:
-
-```text
-.formiq/
-  formiq.sqlite       # projects, CAD models, runs, findings, audit events, users, sessions
-  uploads/            # immutable original drawing uploads
-```
-
-`FORMIQ_DATA_DIR` can point to a persistent mounted directory. Keep the database and originals together when backing up. Use SQLite’s backup mechanism or stop the application before copying the directory, because WAL files can contain recent writes.
-
-Passwords use salted scrypt hashes. Sessions use random opaque tokens stored as hashes, expire after seven days, and are sent in HttpOnly, SameSite cookies. Invalid login attempts are rate limited. Mutating APIs reject cross-origin browser requests. Authenticated users share one workspace; this prototype does not implement organization tenancy, SSO, role administration, or a password-reset flow.
-
-## Private workspace configuration
-
-Create `.env.local` using `.env.example`, then configure a **new data directory** and administrator credentials:
-
-```dotenv
+MONGODB_URI=mongodb+srv://USERNAME:PASSWORD@YOUR_CLUSTER.mongodb.net
+MONGODB_DB=formiq
 FORMIQ_DEMO=false
-FORMIQ_DATA_DIR=.formiq-private
-FORMIQ_ADMIN_EMAIL=designer@your-company.com
-FORMIQ_ADMIN_PASSWORD=replace-with-a-long-unique-password
 FORMIQ_SECURE_COOKIES=false
 ```
 
-The password must have 10–200 characters. The administrator account is provisioned only when the database has no users. Changing environment credentials does not alter an existing account. A separate data directory keeps the known demo account out of the private workspace.
+Keep the real URI private. It belongs only in server environment variables; never use `NEXT_PUBLIC_` for it. URI-encode special characters in credentials. Allow the application's host in Atlas Network Access and grant the database user read/write access to `formiq`.
 
-Use `FORMIQ_SECURE_COOKIES=true` behind HTTPS. Production defaults to secure cookies and disables demo mode unless explicitly enabled.
+```sh
+npm run workspace:manage -- check
+npm run dev
+```
 
-## Build and deploy
+Open `http://localhost:3000`, choose **Create an account**, and enter your name, email and a password of at least 10 characters. Registration signs you in automatically. You can sign out and return through the normal login screen. Optional `FORMIQ_ADMIN_EMAIL` and `FORMIQ_ADMIN_PASSWORD` values provision an initial account; later environment changes do not reset an existing password.
+
+When `MONGODB_URI` is set, accounts, sessions, projects, findings, history and design memory use MongoDB collections. Original CAD files and parsed models use **GridFS**, including files larger than MongoDB's 16 MB document limit. See [MongoDB's GridFS documentation](https://www.mongodb.com/docs/drivers/node/current/crud/gridfs/). No S3 or Render storage disk is required. Docker only packages and runs the app.
+
+MongoDB starts with an empty workspace and does not seed demo data. Existing local SQLite data is preserved but is not automatically migrated. Without `MONGODB_URI`, the original SQLite/local-file mode remains available; `FORMIQ_DEMO=true` enables its sample workspace.
+
+## Use the app
+
+1. **Projects:** create and select your project.
+2. **Drawing library:** upload previous and latest architectural DXF drawings and the current formwork drawing. “Architecture”, “Structure” and “Formwork” identify each drawing's discipline.
+   Use **Edit** to correct the name, revision or discipline, and **Delete** to remove an unused drawing and its stored files. Drawings used in an analysis are protected to preserve review history.
+3. **Revision review:** select both architectural revisions and the formwork drawing, then run analysis. Formwork is the construction mould/layout drawing checked against the latest architecture.
+4. **Issue register:** inspect source-linked findings and accept, reject or investigate them with a note.
+5. **Design memory:** save approved references and resolutions.
+6. **Reports:** download CSV or printable HTML for a selected analysis.
+7. **Settings:** set dimension tolerance and confirm fabrication/BOM release when applicable.
+8. **Overview:** see project totals and recent activity. **Sign out** stays visible at the bottom of the sidebar.
+
+Every account has its own projects, drawings, findings, reports and design memory. Users cannot read or change another account's data. Existing data from the earlier shared workspace remains with its original account. Findings require designer validation; the app does not approve engineering drawings automatically.
+
+Uploads are limited to 30 MB. ASCII DXF processing works directly. The Docker image includes LibreDWG 0.14 for DWG-to-DXF conversion, with a verified source archive checksum. Original files stay in MongoDB; conversion uses temporary files that are removed afterward. Advanced/custom CAD objects may be unsupported; validate the extracted geometry before relying on findings. Analysis is synchronous; use modest drawing sizes and monitor memory/storage usage.
+
+## Start Docker locally
+
+Install Docker Desktop and keep your MongoDB settings in `.env`. Stop `npm run dev` to free port 3000, then run:
+
+```sh
+npm run app:start
+```
+
+The script starts Docker Desktop on macOS/Windows, waits for it, builds the image with DWG conversion, and starts the real workspace at `http://localhost:3000`. It waits for the application's health check. It uses MongoDB and disables demo data. Existing MongoDB accounts and drawings remain available. Click **Retry** on previously uploaded DWG files. Use `npm run docker:logs` for logs and `npm run docker:stop` to stop the app without deleting MongoDB data. On Linux the script attempts a user Docker service; start your system Docker service manually if needed.
+
+For `npm run dev` without Docker on macOS, run `brew install libredwg`, restart Next.js, then retry the drawing. `dwg2dxf` is detected automatically. An installed ODA converter or custom adapter can still be selected using `ODA_CONVERTER_PATH` or `DWG_CONVERTER_PATH`; `LIBREDWG_CONVERTER_PATH` selects an explicit `dwg2dxf` executable. See [LibreDWG's release](https://github.com/LibreDWG/libredwg/releases/tag/0.14) and [Homebrew installation](https://formulae.brew.sh/formula/libredwg).
+
+## Deploy on Render
+
+Deploy the complete Next.js application, frontend and API together:
+
+- Root directory: `.`
+- Runtime: Docker; Dockerfile: `./Dockerfile`.
+- Environment: `MONGODB_URI`, `MONGODB_DB=formiq`, `FORMIQ_DEMO=false`, and `FORMIQ_SECURE_COOKIES=true`. Users create their own accounts.
+- Health check: `/api/health`.
+- No persistent disk, separate worker, PostgreSQL or S3 service.
+
+`render.yaml` is a deployment template. Enter the URI privately in Render and allow Render's outbound addresses in Atlas. This single-app setup does not separately deploy the frontend on Vercel.
+
+For another Docker host with an HTTPS proxy, supply an untracked `.env.production` file and run:
+
+```sh
+docker compose --env-file .env.production -f compose.production.yaml up -d --build
+```
+
+The existing `compose.yaml` is for the local SQLite demo.
+
+## Optional account maintenance
+
+Run from the project directory or Render Shell. Set `FORMIQ_USER_EMAIL`, `FORMIQ_USER_NAME`, and `FORMIQ_USER_PASSWORD` privately in the environment, then:
+
+```sh
+node scripts/manage.mjs add-user
+node scripts/manage.mjs reset-password
+node scripts/manage.mjs list-users
+node scripts/manage.mjs remove-user
+```
+
+Locally, `npm run workspace:manage -- <command>` loads `.env` and `.env.local`. New/reset passwords require 12–200 characters. Reset/removal revokes sessions, and the last account cannot be removed. Public registration is available at `/register`. Password recovery remains an operator command; there is no email reset service.
+
+For MongoDB backups, use Atlas backups if supported by your plan, or MongoDB Database Tools (`mongodump`/`mongorestore`) to back up the entire `formiq` database, including `drawings.files` and `drawings.chunks`. Verify restores into a separate database before relying on them. Automatic backups have not been configured by this repository. The `backup` and `verify-backup` management commands apply only to local SQLite mode.
+
+## Checks
 
 ```sh
 npm run typecheck
 npm test
-npm run build
-npm start
-```
-
-For a local production demo, explicitly set `FORMIQ_DEMO=true` and `FORMIQ_SECURE_COOKIES=false` in `.env.local` before starting over HTTP.
-
-A Dockerfile and a local demo Compose configuration are included:
-
-```sh
-docker compose up --build
-```
-
-Compose exposes port 3000 and uses a persistent named volume. For private hosting, change the Compose environment to the private configuration above and serve behind HTTPS. The Docker image does not include ODA; install it with its platform dependencies in a custom image or use the configured wrapper.
-
-This version expects a **single Node.js server with persistent disk**. Ephemeral serverless deployments are unsuitable for its local SQLite database and upload storage. Distributed production deployment needs shared object storage, a managed database, background CAD jobs, and access-control expansion. Docker configuration is provided but has not been executed in this workspace.
-
-## Verification
-
-`npm test` exercises the actual analysis engine, SQLite transactions, and Next.js API handlers without requiring a running HTTP server. Coverage includes the D14 mismatch, tolerance, unit conversion, block transforms, ambiguous tags, removed elements, malformed files, authentication, original-file retrieval, upload statuses, designer decisions, historical-run preservation, source records, report escaping, CSV formula protection, cross-origin writes, and the DWG executable adapter.
-
-Browser tests are included:
-
-```sh
+npm run build:check
 npm run test:e2e
+npm run test:mongo
 ```
 
-By default they use installed Google Chrome on macOS. Set `PLAYWRIGHT_CHROME_PATH` for another executable. The test runner starts an isolated Next.js server on port 3011 using `.formiq-e2e` and `.next-e2e`. It does not reuse the application running on port 3000 or change its database. If Chrome is unavailable, install a Playwright browser with `npx playwright install chromium`.
+`build:check` uses an isolated copy to avoid conflicts with a running dev server. Unit/API tests use temporary local data. `test:mongo` loads the configured MongoDB URI (or `FORMIQ_MONGO_TEST_URI` for a separate test replica set); it creates and drops only a uniquely named `formiq_test_*` database and checks registration, private account access, login/logout, GridFS files over 16 MB, the actual sample drawing comparison, reviews, reports, settings and persistence after reconnecting.
 
-For an isolated production build check while a development server is running, use `npm run build:check`. It builds a temporary source copy using the installed dependencies and removes the copy afterward, leaving development artifacts and data untouched.
-
-In the build environment, local server sockets and headless Chrome launch are blocked. Browser tests and visual screenshots could not be completed here; the backend tests, TypeScript check, and production build were validated separately.
-
-## Code map
-
-| Location                                | Purpose                                                                   |
-| --------------------------------------- | ------------------------------------------------------------------------- |
-| `app/`                                  | Next.js App Router pages and responsive global styles                     |
-| `app/api/[...path]/route.ts`            | Authenticated backend route handlers and input validation                 |
-| `components/workspace.tsx`              | Dashboard, projects, library, review, register, memory, reports, settings |
-| `components/cad-viewer.tsx`             | CAD geometry, overlays, layers, markers, zoom and pan                     |
-| `lib/cad.ts`                            | Focused ASCII DXF extraction and unit normalization                       |
-| `lib/converter.ts`                      | Configurable DWG-to-DXF executable adapters                               |
-| `lib/analysis.ts`                       | Source-linked revision and coordination rules                             |
-| `lib/request-body.ts` / `lib/errors.ts` | Streaming request limits and expected HTTP failures                       |
-| `lib/format.ts` / `lib/geometry.ts`     | Deterministic display formatting and shared SVG arc geometry              |
-| `lib/db.ts` / `lib/auth.ts`             | SQLite persistence, audit trail, users and sessions                       |
-| `lib/reports.ts`                        | Marked-up printable HTML and CSV exports                                  |
-| `public/samples/`                       | Downloadable illustrative drawing set                                     |
-| `tests/`                                | CAD, storage, API integration, and browser tests                          |
-
-CAD group-code handling follows [Autodesk’s DIMENSION reference](https://help.autodesk.com/cloudhelp/2023/ENU/AutoCAD-DXF/files/GUID-EDD54EAC-A339-4EBA-AEA6-EC8066505E2B.htm) and [HEADER / unit reference](https://help.autodesk.com/cloudhelp/2024/ENU/AutoCAD-DXF/files/GUID-A85E8E67-27CD-4C59-BE61-4DC9FADBE74A.htm). The backend uses [Next.js Route Handlers](https://nextjs.org/docs/app/getting-started/route-handlers).
-
-## Review and performance improvements
-
-Drawing metadata is cached independently of CAD geometry in SQLite. `/api/workspace` returns summaries; authenticated `/api/drawings/:id` returns the full model only when needed by the comparison viewer. Existing databases gain this summary cache automatically, with their source data retained.
-
-Reviews now include an optimistic version check. Clients can pass `expectedVersion` when updating an issue; older records start at version 0. A stale update returns HTTP 409 instead of overwriting another tab’s decision. Refresh the workspace before retrying.
-
-Password verification uses asynchronous scrypt. Login attempt reservations are atomic, including concurrent requests, and throttling returns HTTP 429. Upload request bytes are limited while streaming, even if Content-Length is absent or incorrect. Failed conversion retries retain an actionable failure status; ready drawings cannot be reprocessed and changed beneath historical runs.
-
-Display dates and numbers use an explicit locale, with dates shown in Asia/Kolkata time, to keep server and browser output consistent. Canvas geometry is memoized while panning; reports include arc geometry. See [the code review notes](docs/CODE_REVIEW.md) for the full findings and remaining scaling work.
+Live Atlas verification and local MongoDB/browser servers can be blocked by the coding environment's networking restrictions. A passing local test suite does not by itself verify your Atlas connection or deployed app.

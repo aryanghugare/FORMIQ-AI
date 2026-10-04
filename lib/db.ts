@@ -8,9 +8,10 @@ import { demoDxf, demoMemory } from "./demo";
 import { z } from "zod";
 import type { AuditEvent, Drawing, Project } from "./types";
 export const demoEnabled = () =>
-  process.env.FORMIQ_DEMO === "true" ||
-  (process.env.NODE_ENV !== "production" &&
-    process.env.FORMIQ_DEMO !== "false");
+  !process.env.MONGODB_URI?.trim() &&
+  (process.env.FORMIQ_DEMO === "true" ||
+    (process.env.NODE_ENV !== "production" &&
+      process.env.FORMIQ_DEMO !== "false"));
 export const dataDir = () => resolve(process.env.FORMIQ_DATA_DIR || ".formiq");
 let instance: DatabaseSync | undefined;
 export function db() {
@@ -29,6 +30,10 @@ export function db() {
     instance.exec("BEGIN IMMEDIATE");
     try {
       const columns = instance.prepare("PRAGMA table_info(records)").all();
+      if (!columns.some((c) => c.name === "ownerId"))
+        instance.exec(
+          "ALTER TABLE records ADD COLUMN ownerId TEXT NOT NULL DEFAULT ''",
+        );
       if (!columns.some((c) => c.name === "summary"))
         instance.exec("ALTER TABLE records ADD COLUMN summary TEXT");
       const legacy = instance
@@ -83,6 +88,15 @@ export function db() {
       !instance.prepare("SELECT id FROM records WHERE id='demo-project'").get()
     )
       seedDemo();
+    // Legacy records stay with their original account, even if that user is removed later.
+    instance
+      .prepare(
+        "UPDATE records SET ownerId=(SELECT id FROM users ORDER BY rowid LIMIT 1) WHERE ownerId=''",
+      )
+      .run();
+    instance.exec(
+      "CREATE INDEX IF NOT EXISTS records_owner_kind_project ON records(ownerId,kind,projectId)",
+    );
     return instance;
   } catch (error) {
     instance.close();
@@ -139,7 +153,7 @@ export function save<T extends { id: string; projectId?: string }>(
 ) {
   db()
     .prepare(
-      "INSERT INTO records (id,kind,projectId,data,summary) VALUES (?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET kind=excluded.kind,projectId=excluded.projectId,data=excluded.data,summary=excluded.summary",
+      "INSERT INTO records (id,kind,projectId,data,summary,ownerId) VALUES (?,?,?,?,?,(SELECT id FROM users ORDER BY rowid LIMIT 1)) ON CONFLICT(id) DO UPDATE SET kind=excluded.kind,projectId=excluded.projectId,data=excluded.data,summary=excluded.summary",
     )
     .run(
       data.id,

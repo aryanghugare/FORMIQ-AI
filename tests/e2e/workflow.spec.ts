@@ -18,7 +18,10 @@ test("upload → CAD analysis → designer review → reports and persistence", 
 }) => {
   const errors: string[] = [];
   page.on("pageerror", (e) => errors.push(e.message));
-  page.on('console',message=>{if(message.type()==='error'&&/hydrat/i.test(message.text()))errors.push(message.text());});
+  page.on("console", (message) => {
+    if (message.type() === "error" && /hydrat/i.test(message.text()))
+      errors.push(message.text());
+  });
   await signIn(page);
   await page.screenshot({
     path: "test-results/overview-desktop.png",
@@ -90,6 +93,11 @@ test("upload → CAD analysis → designer review → reports and persistence", 
   await expect(
     drawer.getByRole("button", { name: "Save decision" }),
   ).toBeDisabled();
+  await expect(
+    drawer.getByText("Add a designer note to save this decision.", {
+      exact: false,
+    }),
+  ).toBeVisible();
   await drawer
     .getByLabel("Designer notes")
     .fill(
@@ -97,9 +105,14 @@ test("upload → CAD analysis → designer review → reports and persistence", 
     );
   await drawer.getByRole("button", { name: "Save decision" }).click();
   await expect(
-    drawer.getByText("Design Lead ·", { exact: false }),
+    drawer.getByText("Add a designer note to save this decision.", {
+      exact: false,
+    }),
+  ).toHaveCount(0);
+  await expect(drawer).toHaveCount(0);
+  await expect(
+    page.getByText("Designer decision saved.", { exact: true }),
   ).toBeVisible();
-  await drawer.getByRole("button", { name: "Close issue review" }).click();
   await page.reload();
   await expect(page.getByText("Accepted", { exact: true })).toBeVisible();
   const workspace = await (await page.request.get("/api/workspace")).json();
@@ -206,4 +219,43 @@ test("Design Memory stores an approved source and supports search", async ({
   await expect(
     page.getByRole("heading", { name: "Opening coordination " + suffix }),
   ).toBeVisible();
+});
+test("users can create an account, sign out on a short screen, and log in to a private workspace", async ({
+  page,
+}) => {
+  const email = `browser-${suffix}@example.com`,
+    password = "A-browser-test-password";
+  await page.goto("/login");
+  await page.getByRole("link", { name: "Create an account" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Create your account." }),
+  ).toBeVisible();
+  await page.getByLabel("Full name").fill("Browser User");
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page
+    .getByRole("button", { name: "Create account", exact: true })
+    .click();
+  await expect(
+    page.getByRole("heading", { name: "Workspace overview" }),
+  ).toBeVisible();
+  const workspace = await (await page.request.get("/api/workspace")).json();
+  expect(workspace.user.email).toBe(email);
+  expect(workspace.projects).toEqual([]);
+  expect(workspace.drawings).toEqual([]);
+  await page.setViewportSize({ width: 1440, height: 600 });
+  const signOut = page.getByRole("button", { name: "Sign out", exact: true });
+  await expect(signOut).toBeInViewport();
+  await signOut.click();
+  await expect(page).toHaveURL(/\/login$/);
+  expect((await page.request.get("/api/workspace")).status()).toBe(401);
+  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Password", { exact: true }).fill(password);
+  await page.getByRole("button", { name: "Enter workspace" }).click();
+  await expect(
+    page.getByRole("heading", { name: "Workspace overview" }),
+  ).toBeVisible();
+  expect(
+    (await (await page.request.get("/api/workspace")).json()).projects,
+  ).toEqual([]);
 });

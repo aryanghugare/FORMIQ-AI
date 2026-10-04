@@ -7,6 +7,7 @@ import Workspace from "../components/workspace";
 import Login from "../components/login";
 import { loadWorkspace } from "../lib/workspace";
 import { db } from "../lib/db";
+delete process.env.MONGODB_URI;
 process.env.FORMIQ_DEMO = "true";
 process.env.FORMIQ_DATA_DIR = mkdtempSync(
   join(tmpdir(), "formiq-preview-data-"),
@@ -16,7 +17,7 @@ const user = db()
   .prepare("SELECT id,name,email FROM users LIMIT 1")
   .get() as unknown as import("../lib/types").User;
 for (const [name, component] of [
-  ["overview", <Workspace initialData={loadWorkspace(user)} />],
+  ["overview", <Workspace initialData={await loadWorkspace(user)} />],
   ["login", <Login demo />],
 ] as const) {
   writeFileSync(

@@ -6,19 +6,26 @@
     "node": ">=22.13.0"
   },
   "scripts": {
+    "app:start": "node scripts/start-docker.mjs",
+    "docker:start": "node scripts/start-docker.mjs",
+    "docker:stop": "docker compose -f compose.local.yaml down",
+    "docker:logs": "docker compose -f compose.local.yaml logs --tail=100 -f",
     "dev": "next dev --webpack",
     "build": "next build --webpack",
     "build:check": "node scripts/check-build.mjs",
     "start": "next start",
     "typecheck": "tsc --noEmit",
     "test": "node --import tsx --test tests/*.test.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:mongo": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/test-mongo.mjs",
+    "workspace:manage": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/manage.mjs"
   },
   "dependencies": {
+    "lucide-react": "0.577.0",
+    "mongodb": "6.20.0",
     "next": "16.2.7",
     "react": "19.2.4",
     "react-dom": "19.2.4",
-    "lucide-react": "0.577.0",
     "zod": "4.3.6"
   },
   "devDependencies": {
@@ -26,10 +33,11 @@
     "@types/node": "22.19.19",
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
-    "typescript": "5.9.3",
-    "tsx": "4.21.0"
+    "tsx": "4.21.0",
+    "typescript": "5.9.3"
   },
   "overrides": {
-    "esbuild": "0.27.4"
+    "esbuild": "0.27.4",
+    "@mongodb-js/saslprep": "1.5.2"
   }
 }
