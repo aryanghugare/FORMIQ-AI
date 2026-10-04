@@ -15,12 +15,12 @@ const project: Project = {
   bomReleased: false,
   createdAt: new Date().toISOString(),
 };
-const drawing = (r: "old" | "new" | "formwork"): Drawing => ({
+const drawing = (r: "old" | "new"): Drawing => ({
   id: r,
   projectId: "p1",
   name: r + ".dxf",
   revision: r,
-  discipline: r === "formwork" ? "formwork" : "architecture",
+  discipline: "architecture",
   format: "DXF",
   size: 100,
   uploadedAt: new Date().toISOString(),
@@ -30,8 +30,7 @@ const drawing = (r: "old" | "new" | "formwork"): Drawing => ({
 });
 test("presentation D14 discrepancy is computed from real DXF entities", () => {
   const old = drawing("old"),
-    latest = drawing("new"),
-    fw = drawing("formwork");
+    latest = drawing("new");
   assert.equal(
     old.model!.measurements.find((m) => m.tag === "D14")?.value,
     900,
@@ -40,14 +39,14 @@ test("presentation D14 discrepancy is computed from real DXF entities", () => {
     latest.model!.measurements.find((m) => m.tag === "D14")?.value,
     1000,
   );
-  const result = analyze(project, old, latest, fw, "Tester");
-  assert.equal(result.issues.length, 7);
+  const result = analyze(project, old, latest, "Tester");
+  assert.equal(result.issues.length, 4);
   const mismatch = result.issues.find(
-    (i) => i.tag === "D14" && i.rule === "FW-01",
+    (i) => i.tag === "D14" && i.rule === "REV-01",
   );
   assert.ok(mismatch);
   assert.equal(mismatch.current, 1000);
-  assert.equal(mismatch.formwork, 900);
+  assert.equal(mismatch.previous, 900);
   assert.equal(mismatch.severity, "high");
   assert.equal(mismatch.status, "open");
   assert.equal(
@@ -55,12 +54,24 @@ test("presentation D14 discrepancy is computed from real DXF entities", () => {
     false,
   );
 });
+test("Structure revisions compare directly; mixed disciplines are rejected", () => {
+  const old = { ...drawing("old"), discipline: "structure" as const };
+  const latest = { ...drawing("new"), discipline: "structure" as const };
+  const result = analyze(project, old, latest, "Tester");
+  assert.equal(result.issues.length, 4);
+  assert.equal(result.run.checks, 5);
+  assert.ok(result.issues.every((issue) => issue.drawingIds.length === 2));
+  assert.equal("formworkId" in result.run, false);
+  assert.throws(
+    () => analyze(project, drawing("old"), latest, "Tester"),
+    /Architecture with Architecture or Structure with Structure/,
+  );
+});
 test("BOM impact requires explicitly confirmed release", () => {
   const result = analyze(
     { ...project, bomReleased: true },
     drawing("old"),
     drawing("new"),
-    drawing("formwork"),
     "Tester",
   );
   assert.ok(
@@ -74,7 +85,6 @@ test("tolerance suppresses numerical findings without concealing new tags", () =
     { ...project, tolerance: 300 },
     drawing("old"),
     drawing("new"),
-    drawing("formwork"),
     "Tester",
   );
   assert.deepEqual(
@@ -89,27 +99,19 @@ test("cross-project drawings and identical revisions are rejected", () => {
         project,
         drawing("old"),
         { ...drawing("new"), projectId: "p2" },
-        drawing("formwork"),
         "T",
       ),
     /belong/,
   );
   assert.throws(
-    () =>
-      analyze(
-        project,
-        drawing("old"),
-        drawing("old"),
-        drawing("formwork"),
-        "T",
-      ),
+    () => analyze(project, drawing("old"), drawing("old"), "T"),
     /different/,
   );
 });
 test("ambiguous tags create a mapping issue, never a guessed mismatch", () => {
   const d = drawing("new");
   d.model!.measurements.push({ ...d.model!.measurements[0], value: 700 });
-  const result = analyze(project, drawing("old"), d, drawing("formwork"), "T");
+  const result = analyze(project, drawing("old"), d, "T");
   assert.equal(result.issues.filter((i) => i.tag === "D14").length, 1);
   assert.equal(result.issues.find((i) => i.tag === "D14")?.rule, "QC-02");
 });
@@ -120,7 +122,7 @@ test("unknown drawing units block dimensional analysis", () => {
   );
   assert.equal(d.model.unitScale, null);
   assert.throws(
-    () => analyze(project, drawing("old"), d, drawing("formwork"), "T"),
+    () => analyze(project, drawing("old"), d, "T"),
     /unknown units/,
   );
 });
@@ -140,16 +142,16 @@ test("angular dimensions are excluded from linear checks", () => {
   assert.equal(model.measurements.length, 0);
   assert.ok(model.warnings.some((w) => w.includes("Angular")));
 });
-test("removed elements retained in formwork are flagged", () => {
+test("removed elements are detected between revisions", () => {
   const d = drawing("new");
   d.model!.measurements = d.model!.measurements.filter((m) => m.tag !== "D08");
-  const result = analyze(project, drawing("old"), d, drawing("formwork"), "T");
+  const result = analyze(project, drawing("old"), d, "T");
   assert.equal(result.issues.find((i) => i.tag === "D08")?.rule, "REV-03");
-  assert.equal(result.issues.find((i) => i.tag === "D08")?.severity, "high");
+  assert.equal(result.issues.find((i) => i.tag === "D08")?.severity, "medium");
 });
 test("report escapes source text, marks geometry, and neutralizes CSV formulas", () => {
-  const ds = [drawing("old"), drawing("new"), drawing("formwork")],
-    result = analyze(project, ...(ds as [Drawing, Drawing, Drawing]), "Tester");
+  const ds = [drawing("old"), drawing("new")],
+    result = analyze(project, ...(ds as [Drawing, Drawing]), "Tester");
   result.issues[0].notes = "<script>alert(1)</script>";
   result.issues[0].title = '=HYPERLINK("evil")';
   const html = reportHtml(
@@ -217,14 +219,13 @@ test("rotated block arcs preserve their orientation and appear in reports", () =
   assert.match(cadSvg(model, []), /<path d="M /);
 });
 test("dimension tolerance handles floating-point boundaries consistently", () => {
-  const ds = [drawing("old"), drawing("new"), drawing("formwork")];
+  const ds = [drawing("old"), drawing("new")];
   ds[0].model!.measurements = [{ ...ds[0].model!.measurements[0], value: 0.2 }];
   ds[1].model!.measurements = [{ ...ds[1].model!.measurements[0], value: 0.3 }];
-  ds[2].model!.measurements = [{ ...ds[2].model!.measurements[0], value: 0.2 }];
   assert.equal(
     analyze(
       { ...project, tolerance: 0.1 },
-      ...(ds as [Drawing, Drawing, Drawing]),
+      ...(ds as [Drawing, Drawing]),
       "Tester",
     ).issues.length,
     0,
@@ -236,13 +237,9 @@ test("large repeated tag sets produce one ambiguity finding per tag", () => {
     ...d.model!.measurements[0],
   }));
   assert.equal(
-    analyze(
-      project,
-      drawing("old"),
-      d,
-      drawing("formwork"),
-      "Tester",
-    ).issues.filter((i) => i.tag === "D14").length,
+    analyze(project, drawing("old"), d, "Tester").issues.filter(
+      (i) => i.tag === "D14",
+    ).length,
     1,
   );
 });
@@ -254,13 +251,100 @@ test("a single massive polyline is bounded even though its vertices share one en
   assert.throws(() => parseDxf(content), /vertex limit/);
 });
 test("CSV neutralizes formulas hidden behind leading spaces", () => {
-  const result = analyze(
-    project,
-    drawing("old"),
-    drawing("new"),
-    drawing("formwork"),
-    "Tester",
-  );
+  const result = analyze(project, drawing("old"), drawing("new"), "Tester");
   result.issues[0].notes = '  =HYPERLINK("evil")';
   assert.ok(issueCsv(result.issues).includes(`"'  =HYPERLINK(""evil"")"`));
+});
+
+test("ordinary untagged dimensions compare by reference and direction", () => {
+  const dim = (value: number) =>
+    fixture(
+      `0\nDIMENSION\n8\nDIMENSIONS\n70\n32\n13\n0\n23\n0\n14\n${value}\n24\n0\n42\n${value}\n50\n0\n`,
+    );
+  const previous = { ...drawing("old"), model: parseDxf(dim(900)) };
+  const latest = { ...drawing("new"), model: parseDxf(dim(1000)) };
+  const result = analyze(project, previous, latest, "Tester");
+  assert.equal(result.issues.length, 1);
+  assert.equal(result.issues[0].rule, "REV-01");
+  assert.equal(result.issues[0].previous, 900);
+  assert.equal(result.issues[0].current, 1000);
+  assert.ok(result.run.warnings.some((w) => w.includes("Untagged")));
+  const duplicate = {
+    ...latest,
+    model: parseDxf(
+      dim(1000).replace(
+        "0\nENDSEC\n0\nEOF",
+        "0\nDIMENSION\n8\nDIMENSIONS\n70\n32\n13\n0\n23\n0\n14\n1200\n24\n0\n42\n1200\n0\nENDSEC\n0\nEOF",
+      ),
+    ),
+  };
+  assert.equal(
+    analyze(project, previous, duplicate, "Tester").issues[0].rule,
+    "QC-02",
+  );
+});
+
+test("geometry-only revisions produce honest added/removed findings", () => {
+  const line = (length: number) =>
+    fixture(`0\nLINE\n8\nWALLS\n10\n0\n20\n0\n11\n${length}\n21\n0\n`);
+  const previous = { ...drawing("old"), model: parseDxf(line(900)) };
+  const latest = { ...drawing("new"), model: parseDxf(line(1000)) };
+  const result = analyze(project, previous, latest, "Tester");
+  assert.deepEqual(
+    result.issues.map((i) => i.rule),
+    ["GEO-02", "GEO-01"],
+  );
+  assert.ok(
+    result.issues.every(
+      (i) => i.previous === undefined && i.current === undefined,
+    ),
+  );
+  assert.ok(
+    result.run.warnings.some((w) => w.includes("do not infer dimensions")),
+  );
+  const reversed = {
+    ...latest,
+    model: parseDxf(
+      fixture("0\nLINE\n8\nWALLS\n10\n900\n20\n0\n11\n0\n21\n0\n"),
+    ),
+  };
+  assert.equal(analyze(project, previous, reversed, "Tester").issues.length, 0);
+  const unknown = {
+    ...previous,
+    model: { ...previous.model, unitScale: null },
+  };
+  assert.throws(
+    () => analyze(project, unknown, latest, "Tester"),
+    /unknown units/,
+  );
+});
+
+test("tagged checks remain active alongside geometry fallback", () => {
+  const previous = drawing("old");
+  const latest = {
+    ...drawing("new"),
+    model: parseDxf(
+      fixture("0\nLINE\n8\nWALLS\n10\n0\n20\n0\n11\n1000\n21\n0\n"),
+    ),
+  };
+  const result = analyze(project, previous, latest, "Tester");
+  assert.ok(result.issues.some((i) => i.rule === "REV-03" && i.tag === "D14"));
+  assert.ok(result.issues.some((i) => i.rule === "GEO-01"));
+});
+
+test("geometry areas preserve all duplicate counts without flooding the review", () => {
+  const line = "0\nLINE\n8\nWALLS\n10\n0\n20\n0\n11\n1000\n21\n0\n";
+  const previous = { ...drawing("old"), model: parseDxf(fixture(line)) };
+  const latest = {
+    ...drawing("new"),
+    model: parseDxf(fixture(line.repeat(502))),
+  };
+  const result = analyze(project, previous, latest, "Tester");
+  assert.equal(result.issues.length, 1);
+  assert.equal(result.issues[0].geometry?.added, 501);
+  assert.equal(result.issues[0].geometry?.removed, 0);
+  assert.ok(result.issues.every((i) => i.rule === "GEO-01"));
+  assert.ok(
+    result.run.warnings.some((w) => w.includes("501 changed CAD entities")),
+  );
 });

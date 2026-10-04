@@ -5,7 +5,8 @@ import { fileURLToPath } from "node:url";
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 process.chdir(root);
-const run = (args) => spawnSync("docker", args, { stdio: "ignore", timeout: 10_000 });
+const run = (args) =>
+  spawnSync("docker", args, { stdio: "ignore", timeout: 10_000 });
 const ready = () => run(["info"]).status === 0;
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -59,7 +60,7 @@ try {
   if (run(["compose", "version"]).status !== 0)
     throw new Error("Docker Compose v2 is required. Update Docker Desktop.");
   console.log(
-    "Building and starting FORMIQ with DWG conversion. Stop npm run dev first if it uses port 3000.",
+    "Building and starting Kumkang Kind Ai'Tech with DWG conversion. Stop npm run dev first if it uses port 3000.",
   );
   const exitCode = await new Promise((resolve, reject) => {
     const child = spawn(
@@ -85,7 +86,7 @@ try {
       "Docker startup failed. Check the build output, port 3000, and MongoDB access. Logs: npm run docker:logs",
     );
   console.log(
-    "FORMIQ is ready: http://localhost:3000\nRefresh Drawing library and click Retry on your saved DWG.\nStop the app: npm run docker:stop",
+    "Kumkang Kind Ai'Tech is ready: http://localhost:3000\nRefresh Drawing library and click Retry on your saved DWG.\nStop the app: npm run docker:stop",
   );
 } catch (error) {
   console.error(error.message);

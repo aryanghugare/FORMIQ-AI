@@ -210,20 +210,17 @@ function seedDemo() {
     const user = db().prepare("SELECT name FROM users LIMIT 1").get() as {
       name: string;
     };
-    const drawings = (["old", "new", "formwork"] as const).map((r, i) => {
+    const drawings = (["old", "new"] as const).map((r, i) => {
       const content = demoDxf(r),
         id = `demo-drawing-${r}`,
-        name =
-          r === "formwork"
-            ? "FW-L12.dxf"
-            : `ARCH-L12-Rev-${i === 0 ? "05" : "06"}.dxf`;
+        name = `ARCH-L12-Rev-${i === 0 ? "05" : "06"}.dxf`;
       writeFileSync(join(dataDir(), "uploads", `${id}.dxf`), content);
       const drawing: Drawing = {
         id,
         projectId: project.id,
         name,
-        revision: r === "old" ? "Rev.05" : r === "new" ? "Rev.06" : "Rev.03",
-        discipline: r === "formwork" ? "formwork" : "architecture",
+        revision: r === "old" ? "Rev.05" : "Rev.06",
+        discipline: "architecture",
         format: "DXF",
         size: Buffer.byteLength(content),
         uploadedAt: new Date().toISOString(),
@@ -233,13 +230,7 @@ function seedDemo() {
       };
       return save("drawing", drawing);
     });
-    const result = analyze(
-      project,
-      drawings[0],
-      drawings[1],
-      drawings[2],
-      user.name,
-    );
+    const result = analyze(project, drawings[0], drawings[1], user.name);
     save("run", result.run);
     result.issues.forEach((i) => save("issue", i));
     demoMemory.forEach((m) => save("memory", m));

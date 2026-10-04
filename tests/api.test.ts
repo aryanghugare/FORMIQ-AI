@@ -108,14 +108,13 @@ test("full authenticated API workflow persists CAD analysis and designer review"
   const samples = {
     old: "ARCH-L12-Rev-05.dxf",
     new: "ARCH-L12-Rev-06.dxf",
-    formwork: "FW-L12.dxf",
   };
-  for (const r of ["old", "new", "formwork"] as const) {
+  for (const r of ["old", "new"] as const) {
     const response = await upload(
       project.id,
       readFileSync(join("public/samples", samples[r]), "utf8"),
       samples[r],
-      r === "formwork" ? "formwork" : "architecture",
+      "architecture",
       r,
     );
     assert.equal(response.status, 201);
@@ -127,18 +126,24 @@ test("full authenticated API workflow persists CAD analysis and designer review"
     projectId: project.id,
     oldId: drawings[0].id,
     newId: drawings[1].id,
-    formworkId: drawings[2].id,
   };
+  // An upload parsed by an older version may have geometry but no dimensions.
+  // Analysis must re-extract its retained original without requiring re-upload.
+  const { save: saveLegacy } = await import("../lib/db");
+  saveLegacy("drawing", {
+    ...drawings[0],
+    model: { ...drawings[0].model!, measurements: [] },
+  });
   const response = await call("analyze", "POST", input);
   assert.equal(response.status, 201);
   const result: { run: AnalysisRun; issues: Issue[] } = await response.json();
-  assert.equal(result.issues.length, 7);
+  assert.equal(result.issues.length, 4);
   const issue = result.issues.find(
-    (i) => i.tag === "D14" && i.rule === "FW-01",
+    (i) => i.tag === "D14" && i.rule === "REV-01",
   )!;
   assert.equal(issue.current, 1000);
-  assert.equal(issue.formwork, 900);
-  assert.equal(result.run.checks, 8);
+  assert.equal(issue.previous, 900);
+  assert.equal(result.run.checks, 5);
   const structureResponse = await upload(
     project.id,
     readFileSync(join("public/samples", samples.new), "utf8"),
@@ -147,6 +152,40 @@ test("full authenticated API workflow persists CAD analysis and designer review"
   );
   assert.equal(structureResponse.status, 201);
   const structure: Drawing = await structureResponse.json();
+  const structureOld: Drawing = await (
+    await upload(
+      project.id,
+      readFileSync(join("public/samples", samples.old), "utf8"),
+      "structure-previous.dxf",
+      "structure",
+      "Rev.01",
+    )
+  ).json();
+  const structureComparison = await call("analyze", "POST", {
+    projectId: project.id,
+    oldId: structureOld.id,
+    newId: structure.id,
+  });
+  assert.equal(structureComparison.status, 201);
+  const structureResult = await structureComparison.json();
+  assert.equal(structureResult.issues.length, 4);
+  assert.equal(structureResult.run.checks, 5);
+  assert.ok(
+    structureResult.issues.every(
+      (finding: Issue) => finding.drawingIds.length === 2,
+    ),
+  );
+  assert.equal(
+    (
+      await upload(
+        project.id,
+        readFileSync(join("public/samples", samples.old), "utf8"),
+        "unsupported.dxf",
+        "formwork",
+      )
+    ).status,
+    400,
+  );
   assert.equal(
     (await call("analyze", "POST", { ...input, newId: structure.id })).status,
     400,
@@ -483,7 +522,6 @@ test("public sign-up, login and logout keep projects, CAD files and reviews priv
   for (const [name, discipline] of [
     ["ARCH-L12-Rev-05.dxf", "architecture"],
     ["ARCH-L12-Rev-06.dxf", "architecture"],
-    ["FW-L12.dxf", "formwork"],
   ]) {
     const response = await upload(
       project.id,
@@ -499,11 +537,10 @@ test("public sign-up, login and logout keep projects, CAD files and reviews priv
     projectId: project.id,
     oldId: drawings[0].id,
     newId: drawings[1].id,
-    formworkId: drawings[2].id,
   });
   assert.equal(analysis.status, 201);
   const result = await analysis.json();
-  assert.equal(result.issues.length, 7);
+  assert.equal(result.issues.length, 4);
   const memory = await call("memory", "POST", {
     title: "Alice's private reference",
     category: "Openings",
@@ -556,9 +593,9 @@ test("public sign-up, login and logout keep projects, CAD files and reviews priv
     (
       await upload(
         project.id,
-        readFileSync(join("public/samples", "FW-L12.dxf"), "utf8"),
+        readFileSync(join("public/samples", "ARCH-L12-Rev-05.dxf"), "utf8"),
         "forbidden.dxf",
-        "formwork",
+        "architecture",
       )
     ).status,
     404,
@@ -603,7 +640,6 @@ test("public sign-up, login and logout keep projects, CAD files and reviews priv
         projectId: project.id,
         oldId: drawings[0].id,
         newId: drawings[1].id,
-        formworkId: drawings[2].id,
       })
     ).status,
     404,
@@ -632,9 +668,9 @@ test("public sign-up, login and logout keep projects, CAD files and reviews priv
     alice.projects.map((p: Project) => p.id),
     [project.id],
   );
-  assert.equal(alice.drawings.length, 3);
+  assert.equal(alice.drawings.length, 2);
   assert.equal(alice.memory.length, 1);
-  assert.equal(alice.issues.length, 7);
+  assert.equal(alice.issues.length, 4);
   assert.equal(
     (await call(`reports?projectId=${project.id}&format=csv`)).status,
     200,

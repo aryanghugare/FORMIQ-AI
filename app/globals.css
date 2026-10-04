@@ -1,11 +1,11 @@
 :root {
-  --bg: #f7f8f5;
+  --bg: #f4f7f9;
   --panel: #fff;
-  --ink: #253c30;
+  --ink: #193848;
   --muted: #858d85;
-  --line: #e6e9e1;
-  --green: #315b43;
-  --soft-green: #edf2e9;
+  --line: #dee7ec;
+  --green: #087eac;
+  --soft-green: #e9eff2;
   --orange: #c26b40;
   --soft-orange: #fcf0e7;
   --amber: #a88839;
@@ -84,7 +84,7 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 [tabindex]:focus-visible {
-  outline: 2px solid #6a9a79;
+  outline: 2px solid #4696be;
   outline-offset: 3px;
 }
 button svg,
@@ -101,7 +101,7 @@ label {
 input,
 textarea,
 select {
-  border: 1px solid #dce2d7;
+  border: 1px solid #d3e0e6;
   border-radius: 6px;
   padding: 11px 12px;
   background: white;
@@ -112,7 +112,7 @@ select {
 }
 input::placeholder,
 textarea::placeholder {
-  color: #a0a79f;
+  color: #77b2cf;
 }
 select {
   cursor: pointer;
@@ -123,8 +123,8 @@ textarea {
 input:focus,
 textarea:focus,
 select:focus {
-  border-color: #87a384;
-  box-shadow: 0 0 0 3px #eaf1e7;
+  border-color: #60a5c7;
+  box-shadow: 0 0 0 3px #e7eef1;
 }
 label small {
   color: var(--muted);
@@ -163,10 +163,10 @@ svg {
   gap: 8px;
   padding: 10px 14px;
   min-height: 38px;
-  border: 1px solid #dce2d6;
+  border: 1px solid #d2dfe6;
   border-radius: 6px;
   background: white;
-  color: #52614f;
+  color: #2e6682;
   font-size: 12px;
   font-weight: 500;
   white-space: nowrap;
@@ -176,17 +176,17 @@ svg {
     box-shadow 0.18s;
 }
 .button:hover {
-  background: #f2f5ee;
-  border-color: #b7c6b0;
+  background: #eef3f5;
+  border-color: #9ac6dc;
 }
 .button.primary {
   background: var(--green);
   border-color: var(--green);
   color: white;
-  box-shadow: 0 2px 3px #27452c0c;
+  box-shadow: 0 2px 3px #1c3f500c;
 }
 .button.primary:hover {
-  background: #244d37;
+  background: #1d4254;
 }
 .button.danger {
   background: #b13e35;
@@ -215,12 +215,12 @@ svg {
   min-width: 30px;
   min-height: 30px;
   border-radius: 5px;
-  color: #7a847a;
+  color: #4293bc;
   padding: 5px;
 }
 .icon-button:hover {
-  background: #eff3eb;
-  color: #315b43;
+  background: #ebf0f3;
+  color: #245168;
 }
 .text-button {
   background: transparent;
@@ -231,11 +231,11 @@ svg {
   gap: 6px;
   font-size: 11px;
   font-weight: 500;
-  color: #526949;
+  color: #2e6784;
   white-space: nowrap;
 }
 .text-button:hover {
-  color: #244d37;
+  color: #1d4254;
   text-decoration: underline;
 }
 .inline-link {
@@ -243,7 +243,7 @@ svg {
   background: none;
   text-decoration: underline;
   padding: 0;
-  color: #52734b;
+  color: #316e8d;
 }
 .pill {
   display: inline-flex;
@@ -260,14 +260,14 @@ svg {
   letter-spacing: 0.1px;
 }
 .pill.gray {
-  background: #f2f3ef;
-  color: #7a8276;
-  border-color: #e9ebe5;
+  background: #edf2f5;
+  color: #4090b8;
+  border-color: #e2eaee;
 }
 .pill.green {
-  background: #eff5eb;
-  color: #6a8559;
-  border-color: #e0ead6;
+  background: #ebf2f5;
+  color: #3a81a4;
+  border-color: #d6e3ea;
 }
 .pill.orange {
   background: #fdf0e6;
@@ -293,7 +293,7 @@ svg {
   flex-shrink: 0;
 }
 .status-dot.green {
-  color: #829966;
+  color: #4294bd;
 }
 .status-dot.orange {
   color: #c68059;
@@ -305,7 +305,7 @@ svg {
   display: flex;
   align-items: center;
   gap: 10px;
-  color: #2c4534;
+  color: #1d4254;
   font-size: 24px;
   font-weight: 700;
   letter-spacing: -1px;
@@ -313,8 +313,8 @@ svg {
 }
 .brand-icon {
   position: relative;
-  background: #35553d;
-  color: #f3f4e9;
+  background: #245066;
+  color: #e9f0f4;
   width: 32px;
   height: 36px;
   display: grid;
@@ -328,7 +328,7 @@ svg {
   font-size: 10px;
   letter-spacing: 0.6px;
   padding: 3px 4px;
-  border: 1px solid #dde2d5;
+  border: 1px solid #d2dfe5;
   border-radius: 3px;
   margin-left: -3px;
   font-weight: 500;
@@ -337,7 +337,7 @@ svg {
   font-size: 9px;
   letter-spacing: 1.5px;
   font-weight: 500;
-  color: #7c8b71;
+  color: #4292ba;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -345,7 +345,7 @@ svg {
 .tiny-square {
   height: 4px;
   width: 4px;
-  background: #8e9e7e;
+  background: #58a0c4;
   border-radius: 1px;
 }
 .demo-label {
@@ -370,7 +370,7 @@ svg {
   display: flex;
   flex-direction: column;
   padding: 0 18px;
-  background: #fbfcf8;
+  background: #f8fbfc;
   border-right: 1px solid var(--line);
   z-index: 30;
 }
@@ -393,7 +393,7 @@ svg {
 .workspace-label {
   font-size: 8px;
   letter-spacing: 2.3px;
-  color: #929d88;
+  color: #5ea4c7;
   margin: 10px 0 0 49px;
 }
 .sidebar-divider {
@@ -404,7 +404,7 @@ svg {
 .nav-label {
   font-size: 8px;
   letter-spacing: 1.5px;
-  color: #a3ac9d;
+  color: #79b3d0;
   margin: 0 12px 12px;
   display: block;
 }
@@ -418,7 +418,7 @@ svg {
   padding: 12px 13px;
   border-radius: 6px;
   margin: 3px 0;
-  color: #7a8576;
+  color: #4192ba;
   text-align: left;
   font-size: 12px;
   min-height: 42px;
@@ -427,17 +427,17 @@ svg {
   stroke-width: 1.6;
 }
 .nav-item:hover {
-  background: #f1f4ec;
-  color: #425e3d;
+  background: #ecf1f4;
+  color: #285a73;
 }
 .nav-item.active {
-  background: #eaf0df;
-  color: #4e6940;
+  background: #dfeaf0;
+  color: #2c627d;
   font-weight: 600;
 }
 .nav-count {
   font-size: 10px;
-  background: #d8e4c7;
+  background: #c7dae4;
   padding: 2px 5px;
   border-radius: 4px;
   margin-left: auto;
@@ -450,8 +450,8 @@ svg {
   padding-top: 40px;
 }
 .assistant-card {
-  background: linear-gradient(125deg, #f0f4e8, #f6f7ec);
-  border: 1px solid #e4e9d7;
+  background: linear-gradient(125deg, #e8f0f4, #ecf3f7);
+  border: 1px solid #d7e3e9;
   border-radius: 7px;
   margin: 0 5px 20px;
   padding: 15px 12px;
@@ -459,13 +459,13 @@ svg {
 .assistant-icon {
   width: 27px;
   height: 27px;
-  border: 1px solid #dfe6ce;
+  border: 1px solid #cedee6;
   display: grid;
   place-items: center;
   border-radius: 6px;
-  color: #849360;
+  color: #3f8db4;
   margin-bottom: 12px;
-  background: #f6f8ec;
+  background: #ecf4f8;
 }
 .assistant-card strong {
   display: block;
@@ -474,13 +474,13 @@ svg {
 }
 .assistant-card p {
   font-size: 10px;
-  color: #909984;
+  color: #59a0c4;
   margin: 7px 0 14px;
   line-height: 1.8;
 }
 .assistant-card button {
   font-size: 10px;
-  color: #7c8e66;
+  color: #3f8eb5;
   border: 0;
   background: none;
   padding: 0;
@@ -504,9 +504,9 @@ svg {
   display: grid;
   place-items: center;
   border-radius: 50%;
-  background: #e7edde;
-  border: 1px solid #dfe6d6;
-  color: #758667;
+  background: #dee8ed;
+  border: 1px solid #d5e1e7;
+  color: #3e89af;
   font-size: 10px;
   font-weight: 500;
   flex-shrink: 0;
@@ -528,7 +528,7 @@ svg {
 .profile small {
   display: block;
   font-size: 9px;
-  color: #9aa390;
+  color: #69aaca;
   margin-top: 5px;
 }
 .sidebar-signout {
@@ -567,10 +567,10 @@ svg {
   align-items: center;
   gap: 12px;
   font-size: 10px;
-  color: #a0a797;
+  color: #71aecd;
 }
 .breadcrumb strong {
-  color: #677761;
+  color: #387da0;
   font-size: 10px;
   font-weight: 500;
 }
@@ -584,7 +584,7 @@ svg {
   align-items: center;
   gap: 6px;
   font-size: 9px;
-  color: #8b9c77;
+  color: #519cc2;
   margin-right: 12px;
 }
 .system-status .status-dot {
@@ -592,7 +592,7 @@ svg {
   height: 4px;
 }
 .topbar .icon-button {
-  color: #929c88;
+  color: #5ea3c6;
 }
 .notification-wrap {
   position: relative;
@@ -618,7 +618,7 @@ svg {
   background: white;
   border: 1px solid var(--line);
   border-radius: 8px;
-  box-shadow: 0 10px 50px #253c3020;
+  box-shadow: 0 10px 50px #19384820;
   padding: 16px;
   z-index: 40;
 }
@@ -658,7 +658,7 @@ svg {
 .page-heading p {
   margin-top: 8px;
   font-size: 11px;
-  color: #939b8e;
+  color: #61a6c8;
 }
 .heading-actions {
   display: flex;
@@ -672,7 +672,7 @@ svg {
   gap: 9px;
   padding: 10px 0 19px;
   margin-bottom: 5px;
-  color: #8a9980;
+  color: #569fc3;
   font-size: 10px;
 }
 .project-context select {
@@ -682,14 +682,14 @@ svg {
   padding: 4px 20px 4px 0;
   background: transparent;
   font-weight: 500;
-  color: #607353;
+  color: #337393;
   font-size: 11px;
   box-shadow: none;
 }
 .context-divider {
   width: 1px;
   height: 13px;
-  background: #dce2d4;
+  background: #d1dee5;
   margin: 0 6px;
 }
 .project-context .text-button {
@@ -707,7 +707,7 @@ svg {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   padding: 18px 18px 16px;
-  box-shadow: 0 2px 3px #39482202;
+  box-shadow: 0 2px 3px #1c3d4e02;
 }
 .stat-card > div {
   display: flex;
@@ -717,7 +717,7 @@ svg {
 }
 .stat-card > div > span {
   font-size: 10px;
-  color: #929b8a;
+  color: #5ea4c7;
   white-space: nowrap;
 }
 .stat-icon {
@@ -729,9 +729,9 @@ svg {
   border: 1px solid transparent;
 }
 .stat-icon.green {
-  color: #8a9e72;
-  background: #f4f7ef;
-  border-color: #eaf0e3;
+  color: #4f9bc1;
+  background: #eff4f7;
+  border-color: #e3ecf0;
 }
 .stat-icon.orange {
   color: #c28c63;
@@ -752,7 +752,7 @@ svg {
 }
 .stat-card > small {
   font-size: 9px;
-  color: #939c89;
+  color: #5ea4c7;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -761,11 +761,11 @@ svg {
   position: relative;
   overflow: hidden;
   display: flex;
-  background: #2d4939;
-  border: 1px solid #2d4939;
+  background: #1f4457;
+  border: 1px solid #1f4457;
   border-radius: 10px;
   min-height: 237px;
-  color: #f1f4e7;
+  color: #e7f0f4;
   padding: 28px 30px;
   margin: 0 0 27px;
 }
@@ -780,10 +780,10 @@ svg {
   gap: 7px;
   font-size: 8px;
   letter-spacing: 1.6px;
-  color: #c5d2b1;
+  color: #a4cbdf;
 }
 .hero-eyebrow svg {
-  color: #bccea8;
+  color: #9ac6dc;
 }
 .hero-content h2 {
   font-size: 29px;
@@ -792,28 +792,28 @@ svg {
   margin: 17px 0 11px;
 }
 .hero-content p {
-  color: #b9c7b3;
+  color: #9dc8dd;
   font-size: 11px;
   line-height: 1.8;
 }
 .hero-button {
-  background: #e6ebd6;
-  color: #365339;
-  border-color: #e6ebd6;
+  background: #d6e4eb;
+  color: #244f65;
+  border-color: #d6e4eb;
   font-size: 10px;
   min-height: 32px;
   padding: 8px 11px;
   margin-top: 19px;
 }
 .hero-button:hover {
-  background: #f1f4e4;
+  background: #e4eff4;
 }
 .hero-footer {
   display: inline-flex;
   align-items: center;
   gap: 5px;
   font-size: 8px;
-  color: #9eb191;
+  color: #74b0ce;
   margin-left: 12px;
   white-space: nowrap;
 }
@@ -836,8 +836,8 @@ svg {
   position: absolute;
   inset: -50px;
   background-image:
-    linear-gradient(#b4cbae08 1px, transparent 1px),
-    linear-gradient(90deg, #b4cbae08 1px, transparent 1px);
+    linear-gradient(#9dc7dc08 1px, transparent 1px),
+    linear-gradient(90deg, #9dc7dc08 1px, transparent 1px);
   background-size: 20px 20px;
   mask-image: linear-gradient(to right, transparent, black 30%);
 }
@@ -847,7 +847,7 @@ svg {
   left: 30%;
   font-size: 6px;
   letter-spacing: 1.5px;
-  color: #9db894;
+  color: #7bb4d1;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -874,7 +874,7 @@ svg {
 }
 .section-heading p {
   font-size: 10px;
-  color: #9aa190;
+  color: #67a9ca;
   margin-top: 6px;
 }
 .panel {
@@ -898,11 +898,11 @@ svg {
 }
 .panel-heading p {
   font-size: 9px;
-  color: #9ba391;
+  color: #6aaaca;
   margin-top: 6px;
 }
 .panel-heading > svg {
-  color: #9aa78e;
+  color: #6aabcb;
 }
 .table-scroll {
   overflow-x: auto;
@@ -914,40 +914,40 @@ table {
   text-align: left;
 }
 thead {
-  background: #fcfdf9;
+  background: #f9fcfd;
 }
 th {
   font-size: 8px;
   text-transform: uppercase;
   letter-spacing: 0.9px;
-  color: #a3ab99;
+  color: #75b1cf;
   padding: 13px 19px;
   font-weight: 500;
   white-space: nowrap;
-  border-bottom: 1px solid #edf0e7;
+  border-bottom: 1px solid #e6edf1;
 }
 td {
   padding: 16px 19px;
-  border-bottom: 1px solid #eef1e9;
-  color: #849078;
+  border-bottom: 1px solid #e8eff2;
+  color: #4998bf;
 }
 tr:last-child td {
   border-bottom: 0;
 }
 td > strong {
   font-size: 11px;
-  color: #53654a;
+  color: #2e6582;
   font-weight: 500;
 }
 td small {
   display: block;
-  color: #a0a894;
+  color: #6faecd;
   font-size: 9px;
   margin-top: 5px;
   line-height: 1.6;
 }
 tbody tr:hover {
-  background: #fdfefb;
+  background: #fbfdfe;
 }
 .issue-table tbody tr {
   cursor: pointer;
@@ -961,12 +961,12 @@ tbody tr:hover {
 .finding-name strong {
   font-size: 11px;
   font-weight: 500;
-  color: #5b6d4e;
+  color: #316c8a;
 }
 .finding-name small {
   font-size: 8px;
   letter-spacing: 0.1px;
-  color: #a3ab95;
+  color: #72afce;
 }
 .issue-symbol {
   display: inline-flex;
@@ -986,12 +986,12 @@ tbody tr:hover {
   color: #bba865;
 }
 .issue-symbol.low {
-  background: #eff3ea;
-  color: #95a381;
+  background: #eaf0f3;
+  color: #5ea3c6;
 }
 .issue-symbol.accepted {
-  background: #edf4e7;
-  color: #789861;
+  background: #e7f0f4;
+  color: #4190b8;
 }
 .measurement-cell {
   display: flex;
@@ -1002,16 +1002,16 @@ tbody tr:hover {
   white-space: nowrap;
 }
 .measurement-cell > span {
-  color: #a9af9f;
+  color: #7db5d1;
   font-size: 9px;
   margin-left: -4px;
 }
 .measurement-cell > strong {
-  color: #6e7e5e;
+  color: #3980a3;
   font-weight: 500;
 }
 .measurement-cell > svg {
-  color: #a7b29b;
+  color: #7cb5d1;
 }
 .overview-bottom {
   display: grid;
@@ -1026,7 +1026,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 11px;
-  border-bottom: 1px solid #edf0e7;
+  border-bottom: 1px solid #e6edf1;
   padding: 13px 0;
 }
 .mini-drawing:last-child {
@@ -1035,10 +1035,10 @@ tbody tr:hover {
 .file-icon {
   width: 32px;
   min-height: 37px;
-  background: #f8faf4;
-  border: 1px solid #e8eedd;
+  background: #f4f8fa;
+  border: 1px solid #dde8ee;
   border-radius: 5px;
-  color: #a3b58d;
+  color: #74b0ce;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1053,11 +1053,11 @@ tbody tr:hover {
 .mini-drawing strong {
   font-size: 10px;
   font-weight: 500;
-  color: #647853;
+  color: #357696;
 }
 .mini-drawing small {
   display: block;
-  color: #a4ad98;
+  color: #76b1cf;
   font-size: 8px;
   margin-top: 6px;
   text-transform: capitalize;
@@ -1083,46 +1083,46 @@ tbody tr:hover {
   top: 8px;
   bottom: 0;
   width: 1px;
-  background: #e8edde;
+  background: #dee8ed;
 }
 .timeline-dot {
   width: 7px;
   height: 7px;
   flex-shrink: 0;
   margin-top: 4px;
-  background: #e0e8d5;
-  border: 1px solid #d3ddc6;
+  background: #d5e2e8;
+  border: 1px solid #c5d6de;
   border-radius: 50%;
   z-index: 1;
 }
 .timeline-dot.active {
-  background: #92a776;
-  border-color: #8ca171;
-  box-shadow: 0 0 0 3px #eff3e6;
+  background: #59a0c4;
+  border-color: #509cc2;
+  box-shadow: 0 0 0 3px #e6eff3;
 }
 .timeline-item strong {
   font-size: 10px;
   font-weight: 500;
-  color: #758565;
+  color: #3d88ad;
 }
 .timeline-item p {
   font-size: 9px;
-  color: #a0aa93;
+  color: #70aecd;
   line-height: 1.5;
   margin: 6px 0;
 }
 .timeline-item small {
   font-size: 8px;
-  color: #b0b79f;
+  color: #83b8d3;
 }
 .page-footer {
   margin-top: 27px;
   padding: 18px 0;
-  border-top: 1px solid #e6eadc;
+  border-top: 1px solid #dbe6eb;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  color: #a3ad92;
+  color: #72afcd;
   font-size: 8px;
 }
 .page-footer > span:first-child {
@@ -1149,7 +1149,7 @@ tbody tr:hover {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding-left: 12px;
-  color: #a0ab94;
+  color: #72afcd;
   width: 370px;
   max-width: 100%;
   height: 36px;
@@ -1170,7 +1170,7 @@ tbody tr:hover {
 }
 .filter-count {
   margin-left: auto;
-  color: #99a18e;
+  color: #66a8c9;
   font-size: 10px;
   white-space: nowrap;
 }
@@ -1192,7 +1192,7 @@ tbody tr:hover {
     transform 0.2s;
 }
 .project-card:hover {
-  border-color: #b3c7a4;
+  border-color: #92c1d9;
   transform: translateY(-2px);
 }
 .project-card-top {
@@ -1204,12 +1204,12 @@ tbody tr:hover {
 .project-icon {
   width: 48px;
   height: 48px;
-  background: #f0f4e8;
-  border: 1px solid #e2e9d8;
+  background: #e8f0f4;
+  border: 1px solid #d8e3e9;
   border-radius: 8px;
   display: grid;
   place-items: center;
-  color: #829970;
+  color: #4a98bf;
 }
 .project-card .eyebrow {
   font-size: 8px;
@@ -1220,7 +1220,7 @@ tbody tr:hover {
   line-height: 1.4;
 }
 .project-card p {
-  color: #929e86;
+  color: #5ea3c6;
   font-size: 11px;
   margin: 7px 0 20px;
 }
@@ -1228,7 +1228,7 @@ tbody tr:hover {
   display: flex;
   gap: 18px;
   font-size: 10px;
-  color: #7e906e;
+  color: #4293bc;
   margin-bottom: 25px;
 }
 .project-card-stats span {
@@ -1243,20 +1243,20 @@ tbody tr:hover {
   border-top: 1px solid var(--line);
   padding: 16px 0;
   font-size: 10px;
-  color: #6c8559;
+  color: #3a81a4;
 }
 .new-project-card {
   padding: 30px;
   min-height: 280px;
   background: transparent;
-  border: 1px dashed #ccd8be;
+  border: 1px dashed #b2d3e4;
   border-radius: 10px;
   display: flex;
   align-items: center;
   justify-content: center;
   flex-direction: column;
   gap: 15px;
-  color: #879d71;
+  color: #4d9ac1;
 }
 .new-project-card strong {
   font-size: 12px;
@@ -1264,32 +1264,32 @@ tbody tr:hover {
 }
 .new-project-card span {
   font-size: 10px;
-  color: #a0ad91;
+  color: #71aecd;
   line-height: 1.5;
   max-width: 180px;
 }
 .new-project-card:hover {
-  background: #eef3e5;
+  background: #e5eef3;
 }
 .notice {
   display: flex;
   align-items: center;
   gap: 13px;
-  border: 1px solid #e5eadc;
+  border: 1px solid #dbe6eb;
   border-radius: 8px;
-  background: #f2f5ec;
+  background: #ecf2f5;
   padding: 16px 18px;
   margin: 18px 0;
-  color: #8da376;
+  color: #569fc3;
 }
 .notice strong {
   font-size: 11px;
   font-weight: 500;
-  color: #6e8559;
+  color: #3a81a4;
 }
 .notice p {
   font-size: 10px;
-  color: #91a080;
+  color: #5ba2c5;
   margin-top: 5px;
 }
 .notice .inline-link {
@@ -1320,8 +1320,8 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #eef4e6;
-  border: 1px solid #dfe9d2;
+  background: #e6eff4;
+  border: 1px solid #d2e1e9;
   border-radius: 8px;
   padding: 14px 18px;
   margin: 4px 0 18px;
@@ -1337,25 +1337,25 @@ tbody tr:hover {
   border-radius: 50%;
   display: grid;
   place-items: center;
-  background: #dfeccd;
-  color: #729257;
+  background: #cde2ec;
+  color: #3d87ac;
 }
 .analysis-summary strong {
   font-size: 11px;
   font-weight: 500;
-  color: #698551;
+  color: #387c9e;
 }
 .analysis-summary small {
   font-size: 9px;
   display: block;
-  color: #9bae84;
+  color: #68a9ca;
   margin-top: 5px;
 }
 .run-selector {
   flex-direction: row;
   align-items: center;
   font-size: 9px;
-  color: #8e9f7c;
+  color: #57a0c4;
   gap: 10px;
 }
 .run-selector select {
@@ -1363,9 +1363,9 @@ tbody tr:hover {
   padding: 7px 9px;
   width: auto;
   max-width: 250px;
-  background: #f9fbf5;
-  border-color: #dce6cf;
-  color: #6d8457;
+  background: #f5f9fb;
+  border-color: #cfdee6;
+  color: #397fa2;
 }
 .review-layout {
   display: grid;
@@ -1383,22 +1383,22 @@ tbody tr:hover {
 .cad-viewer {
   display: flex;
   flex-direction: column;
-  background: #fdfefb;
+  background: #fbfdfe;
 }
 .viewer-toolbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 12px 15px;
-  border-bottom: 1px solid #e9eddf;
+  border-bottom: 1px solid #dfe8ed;
   gap: 10px;
 }
 .segmented {
   display: inline-flex;
   padding: 3px;
-  border: 1px solid #e4ead9;
+  border: 1px solid #d9e4ea;
   border-radius: 5px;
-  background: #f2f5ed;
+  background: #edf2f5;
 }
 .segmented button {
   border: 0;
@@ -1406,12 +1406,12 @@ tbody tr:hover {
   border-radius: 3px;
   padding: 6px 9px;
   font-size: 9px;
-  color: #93a181;
+  color: #5ca3c6;
 }
 .segmented button.active {
-  color: #65834e;
+  color: #36799b;
   background: #fff;
-  box-shadow: 0 1px 3px #3a50230c;
+  box-shadow: 0 1px 3px #1e43550c;
 }
 .canvas-wrap {
   position: relative;
@@ -1436,9 +1436,9 @@ tbody tr:hover {
   left: 15px;
   padding: 6px 8px;
   background: #fffffff0;
-  border: 1px solid #e9eedd;
+  border: 1px solid #dde8ee;
   border-radius: 3px;
-  color: #81936d;
+  color: #4394bd;
   font-size: 8px;
   display: flex;
   align-items: center;
@@ -1446,7 +1446,7 @@ tbody tr:hover {
   pointer-events: none;
 }
 .canvas-label > span:last-child {
-  color: #a4ad99;
+  color: #77b2cf;
 }
 .zoom-controls {
   position: absolute;
@@ -1458,7 +1458,7 @@ tbody tr:hover {
   border: 1px solid var(--line);
   border-radius: 5px;
   padding: 3px;
-  box-shadow: 0 2px 4px #32492208;
+  box-shadow: 0 2px 4px #1c3e4f08;
 }
 .zoom-controls button {
   width: 28px;
@@ -1467,25 +1467,25 @@ tbody tr:hover {
   place-items: center;
   border: 0;
   background: white;
-  color: #84986f;
+  color: #4897bf;
   border-radius: 3px;
 }
 .zoom-controls button:hover {
-  background: #edf3e7;
+  background: #e7eff3;
 }
 .zoom-controls > span {
   font-size: 8px;
-  color: #a0ad8f;
+  color: #6faecd;
   padding: 0 4px;
 }
 .viewer-footer {
-  border-top: 1px solid #e8eddf;
+  border-top: 1px solid #dfe8ed;
   padding: 12px 15px;
   display: flex;
   align-items: center;
   gap: 17px;
   font-size: 8px;
-  color: #a0ad90;
+  color: #70aecd;
   flex-wrap: wrap;
 }
 .viewer-footer > span {
@@ -1496,7 +1496,7 @@ tbody tr:hover {
 .legend-line {
   height: 2px;
   width: 12px;
-  background: #6c8173;
+  background: #3e89af;
 }
 .legend-line.old {
   background: #cea38d;
@@ -1510,7 +1510,7 @@ tbody tr:hover {
 .viewer-hint {
   margin-left: auto;
   font-size: 7px !important;
-  color: #b3bda4;
+  color: #8bbdd6;
 }
 .layer-panel {
   position: absolute;
@@ -1520,7 +1520,7 @@ tbody tr:hover {
   border: 1px solid var(--line);
   border-radius: 6px;
   padding: 15px;
-  box-shadow: 0 8px 20px #30442d0f;
+  box-shadow: 0 8px 20px #1d42540f;
   max-height: 320px;
   overflow: auto;
   width: 200px;
@@ -1540,7 +1540,7 @@ tbody tr:hover {
 .layer-panel input {
   width: 12px;
   height: 12px;
-  accent-color: #5c8148;
+  accent-color: #347595;
 }
 .viewer-empty {
   display: flex;
@@ -1548,8 +1548,8 @@ tbody tr:hover {
   align-items: center;
   justify-content: center;
   min-height: 380px;
-  background: #f8faf5;
-  color: #93a680;
+  background: #f5f8fa;
+  color: #5fa4c7;
   gap: 15px;
   padding: 30px;
   text-align: center;
@@ -1569,7 +1569,7 @@ tbody tr:hover {
 .review-finding {
   text-align: left;
   border: 0;
-  border-bottom: 1px solid #eaf0e0;
+  border-bottom: 1px solid #e0ebf0;
   background: white;
   width: 100%;
   padding: 16px;
@@ -1579,10 +1579,10 @@ tbody tr:hover {
 }
 .review-finding:hover,
 .review-finding.selected {
-  background: #f8faf2;
+  background: #f2f7fa;
 }
 .review-finding.selected {
-  box-shadow: inset 3px 0 #9db184;
+  box-shadow: inset 3px 0 #6aabcb;
 }
 .review-finding > div {
   display: flex;
@@ -1607,13 +1607,13 @@ tbody tr:hover {
   font-size: 11px;
   font-weight: 500;
   display: block;
-  color: #637a50;
+  color: #357595;
   line-height: 1.5;
 }
 .review-finding > p {
   font-size: 10px;
   margin-top: 6px;
-  color: #9ea98e;
+  color: #6cabcb;
   line-height: 1.5;
 }
 .review-finding > footer {
@@ -1621,7 +1621,7 @@ tbody tr:hover {
   align-items: center;
   justify-content: space-between;
   margin-top: 12px;
-  color: #9bab87;
+  color: #68a9ca;
   font-size: 8px;
 }
 .review-finding .pill {
@@ -1652,10 +1652,10 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   margin: 22px 0;
-  background: #f0f4e9;
+  background: #e9f0f4;
   border-radius: 7px;
   padding: 13px 16px;
-  color: #8a9b78;
+  color: #519cc2;
   font-size: 9px;
 }
 .method-strip > span {
@@ -1668,14 +1668,14 @@ tbody tr:hover {
   font-style: normal;
   width: 16px;
   height: 16px;
-  border: 1px solid #d9e3cc;
+  border: 1px solid #ccdbe3;
   border-radius: 50%;
   display: grid;
   place-items: center;
 }
 .method-strip svg {
   margin-left: 10px;
-  color: #b4c1a5;
+  color: #8fbfd7;
 }
 .issue-overview {
   display: flex;
@@ -1698,7 +1698,7 @@ tbody tr:hover {
 }
 .issue-overview > div > span:last-child {
   font-size: 10px;
-  color: #97a387;
+  color: #62a6c8;
 }
 .issue-overview > .text-button {
   margin-left: auto;
@@ -1708,8 +1708,8 @@ tbody tr:hover {
   align-items: center;
   gap: 20px;
   padding: 27px;
-  background: #eff3e7;
-  border: 1px solid #e2e9d7;
+  background: #e7eff3;
+  border: 1px solid #d7e3e9;
   border-radius: 10px;
 }
 .memory-intro-icon {
@@ -1717,20 +1717,20 @@ tbody tr:hover {
   height: 59px;
   display: grid;
   place-items: center;
-  background: #e3ecd5;
-  border: 1px solid #dbe5cc;
+  background: #d5e4ec;
+  border: 1px solid #ccdde5;
   border-radius: 9px;
-  color: #8ea575;
+  color: #569fc4;
   flex-shrink: 0;
 }
 .memory-intro h2 {
   font-size: 19px;
   font-weight: 500;
-  color: #637b50;
+  color: #357696;
 }
 .memory-intro p {
   font-size: 11px;
-  color: #95a284;
+  color: #5fa4c7;
   margin-top: 9px;
   max-width: 610px;
 }
@@ -1762,7 +1762,7 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 6px;
-  color: #8c9f77;
+  color: #539ec3;
   font-size: 9px;
 }
 .memory-card-top .pill {
@@ -1772,11 +1772,11 @@ tbody tr:hover {
   font-size: 15px;
   font-weight: 500;
   line-height: 1.55;
-  color: #657b51;
+  color: #357697;
   min-height: 48px;
 }
 .memory-card > p {
-  color: #9ba68d;
+  color: #69aaca;
   font-size: 11px;
   line-height: 1.8;
   margin: 10px 0 18px;
@@ -1787,14 +1787,14 @@ tbody tr:hover {
   flex-direction: column;
   gap: 10px;
   padding: 14px;
-  background: #fafbf7;
-  border: 1px solid #eaf0e0;
+  background: #f7fafb;
+  border: 1px solid #e0ebf0;
   border-radius: 5px;
 }
 .memory-source > span {
   font-size: 7px;
   letter-spacing: 0.8px;
-  color: #a5b097;
+  color: #78b2cf;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -1803,7 +1803,7 @@ tbody tr:hover {
   font-size: 9px;
   letter-spacing: 0;
   font-weight: 500;
-  color: #7e9365;
+  color: #4090b8;
 }
 .memory-tags {
   display: flex;
@@ -1835,21 +1835,21 @@ tbody tr:hover {
 }
 .memory-resolution > p {
   font-size: 10px;
-  color: #9da891;
+  color: #6daccc;
   margin-top: 8px;
 }
 .memory-resolution small {
   display: block;
   font-size: 8px;
-  color: #a7b398;
+  color: #7bb4d0;
   margin-top: 12px;
 }
 .report-hero {
   display: flex;
   align-items: center;
   gap: 25px;
-  background: #f0f4e8;
-  border: 1px solid #e1e9d4;
+  background: #e8f0f4;
+  border: 1px solid #d4e2e9;
   border-radius: 10px;
   padding: 33px;
   margin: 3px 0 22px;
@@ -1859,11 +1859,11 @@ tbody tr:hover {
   width: 62px;
   display: grid;
   place-items: center;
-  background: #e4ecd6;
-  border: 1px solid #d9e5c8;
+  background: #d6e5ec;
+  border: 1px solid #c8dbe5;
   clip-path: polygon(0 0, 78% 0, 100% 20%, 100% 100%, 0 100%);
   border-radius: 6px;
-  color: #8da573;
+  color: #559ec3;
   flex-shrink: 0;
 }
 .report-hero .eyebrow {
@@ -1873,11 +1873,11 @@ tbody tr:hover {
   font-size: 24px;
   font-weight: 500;
   margin: 10px 0;
-  color: #637d4b;
+  color: #347494;
 }
 .report-hero p {
   font-size: 11px;
-  color: #9aaa87;
+  color: #67a9ca;
   line-height: 1.8;
 }
 .report-hero-count {
@@ -1885,7 +1885,7 @@ tbody tr:hover {
   flex-direction: column;
   margin-left: auto;
   align-items: center;
-  color: #7e9666;
+  color: #4292ba;
   min-width: 75px;
 }
 .report-hero-count strong {
@@ -1922,13 +1922,13 @@ tbody tr:hover {
 .checkbox-label input {
   width: 15px;
   height: 15px;
-  accent-color: #6f8f59;
+  accent-color: #3c87ac;
   margin: 0;
   flex-shrink: 0;
 }
 .helper-text {
   font-size: 10px;
-  color: #a0ac90;
+  color: #6faecd;
   line-height: 1.8;
 }
 .settings-body .helper-text {
@@ -1942,18 +1942,18 @@ tbody tr:hover {
   align-items: center;
   justify-content: space-between;
   font-size: 11px;
-  color: #849976;
+  color: #4e9bc1;
   border-bottom: 1px solid var(--line);
   padding-bottom: 15px;
 }
 .settings-note {
   display: flex;
   gap: 12px;
-  background: #f4f7ee;
-  border: 1px solid #e7eedc;
+  background: #eef4f7;
+  border: 1px solid #dce8ee;
   border-radius: 6px;
   padding: 16px;
-  color: #8ca371;
+  color: #529dc2;
 }
 .settings-note > svg {
   flex-shrink: 0;
@@ -1977,19 +1977,19 @@ tbody tr:hover {
   height: 50px;
   display: grid;
   place-items: center;
-  background: #f1f5e9;
-  border: 1px solid #e4ecd6;
+  background: #e9f1f5;
+  border: 1px solid #d6e5ec;
   border-radius: 12px;
-  color: #98ae82;
+  color: #67a8c9;
 }
 .empty-state h3 {
-  color: #7b9068;
+  color: #4090b8;
   font-size: 14px;
   font-weight: 500;
 }
 .empty-state p {
   font-size: 11px;
-  color: #a3af93;
+  color: #74b0ce;
   max-width: 360px;
   line-height: 1.8;
 }
@@ -2000,7 +2000,7 @@ tbody tr:hover {
 .drawer-backdrop {
   position: fixed;
   inset: 0;
-  background: #20372b45;
+  background: #17324045;
   z-index: 70;
   display: flex;
   align-items: center;
@@ -2014,9 +2014,9 @@ tbody tr:hover {
   max-height: calc(100vh - 56px);
   overflow: auto;
   background: #fffefb;
-  border: 1px solid #e6ebdc;
+  border: 1px solid #dce6eb;
   border-radius: 12px;
-  box-shadow: 0 18px 70px #1b36263b;
+  box-shadow: 0 18px 70px #152f3c3b;
   animation: appear 0.15s ease-out;
 }
 .modal.wide {
@@ -2037,7 +2037,7 @@ tbody tr:hover {
 .modal > header p {
   font-size: 10px;
   margin-top: 9px;
-  color: #97a389;
+  color: #64a7c8;
   line-height: 1.6;
 }
 .modal-form {
@@ -2058,7 +2058,7 @@ tbody tr:hover {
 .delete-drawing-message {
   margin: 0;
   line-height: 1.7;
-  color: #52614f;
+  color: #2e6682;
 }
 .form-row {
   display: grid;
@@ -2076,13 +2076,13 @@ tbody tr:hover {
 }
 .form-footer > span {
   font-size: 9px;
-  color: #a6b298;
+  color: #7ab3d0;
   line-height: 1.6;
 }
 .upload-zone {
   padding: 30px 20px;
-  border: 1px dashed #c8d6b8;
-  background: #f8faf4;
+  border: 1px dashed #acd0e2;
+  background: #f4f8fa;
   border-radius: 8px;
   display: flex;
   flex-direction: column;
@@ -2094,32 +2094,32 @@ tbody tr:hover {
 }
 .upload-zone.dragging,
 .upload-zone:hover {
-  background: #f0f5e6;
-  border-color: #8aa271;
+  background: #e6f0f5;
+  border-color: #519cc2;
 }
 .upload-icon {
   width: 48px;
   height: 48px;
-  background: #edf3e4;
-  border: 1px solid #dfe9d2;
+  background: #e4eef3;
+  border: 1px solid #d2e1e9;
   border-radius: 10px;
   display: grid;
   place-items: center;
-  color: #8aa571;
+  color: #539ec3;
   margin-bottom: 5px;
 }
 .upload-zone strong {
   font-size: 12px;
   font-weight: 500;
-  color: #738d59;
+  color: #3c85aa;
 }
 .upload-zone > span {
   font-size: 10px;
-  color: #98ac84;
+  color: #67a8c9;
 }
 .upload-zone > small {
   font-size: 8px;
-  color: #acb89b;
+  color: #80b7d3;
   margin-top: 5px;
 }
 .alert {
@@ -2143,10 +2143,10 @@ tbody tr:hover {
   align-items: center;
   justify-content: space-between;
   padding: 16px 14px;
-  background: #f3f6ec;
-  border: 1px solid #e6edda;
+  background: #ecf3f6;
+  border: 1px solid #dae7ed;
   border-radius: 7px;
-  color: #9eae8b;
+  color: #6daccc;
   font-size: 9px;
 }
 .analysis-steps > span {
@@ -2156,14 +2156,14 @@ tbody tr:hover {
 }
 .analysis-steps i {
   font-style: normal;
-  background: #e6eed9;
+  background: #d9e7ee;
   border-radius: 50%;
   width: 18px;
   height: 18px;
   display: grid;
   place-items: center;
   font-size: 8px;
-  color: #7f9b66;
+  color: #4495bd;
 }
 .help-content {
   padding: 25px 28px;
@@ -2171,7 +2171,7 @@ tbody tr:hover {
 .help-content h3 {
   font-size: 12px;
   font-weight: 500;
-  color: #6d8856;
+  color: #3a81a4;
   margin-top: 21px;
 }
 .help-content h3:first-child {
@@ -2179,28 +2179,28 @@ tbody tr:hover {
 }
 .help-content p {
   font-size: 11px;
-  color: #92a180;
+  color: #5ba2c6;
   line-height: 1.9;
   margin-top: 9px;
 }
 .help-content code {
   font-size: 10px;
-  background: #eef3e5;
+  background: #e5eef3;
   padding: 2px 4px;
   border-radius: 3px;
-  color: #7b935f;
+  color: #3f8cb3;
   overflow-wrap: anywhere;
 }
 .sample-downloads {
   margin-top: 23px;
-  background: #f2f6e9;
-  border: 1px solid #e0ead0;
+  background: #e9f2f6;
+  border: 1px solid #d0e1ea;
   border-radius: 7px;
   padding: 17px;
 }
 .sample-downloads strong {
   font-size: 12px;
-  color: #7b9460;
+  color: #3f8eb5;
 }
 .sample-downloads a {
   display: inline-flex;
@@ -2209,14 +2209,14 @@ tbody tr:hover {
   font-size: 9px;
   margin-right: 14px;
   margin-top: 12px;
-  color: #7f995f;
+  color: #4090b8;
   text-decoration: underline;
 }
 .drawer-backdrop {
   justify-content: flex-end;
   padding: 0;
   backdrop-filter: blur(1px);
-  background: #20372b28;
+  background: #17324028;
 }
 .issue-drawer {
   width: 450px;
@@ -2224,7 +2224,7 @@ tbody tr:hover {
   height: 100%;
   background: #fffefb;
   border-left: 1px solid var(--line);
-  box-shadow: -8px 0 40px #1f3d2914;
+  box-shadow: -8px 0 40px #18354414;
   display: flex;
   flex-direction: column;
   animation: slide 0.2s ease-out;
@@ -2257,11 +2257,11 @@ tbody tr:hover {
   font-size: 24px;
   font-weight: 500;
   line-height: 1.4;
-  color: #557040;
+  color: #2e6682;
 }
 .drawer-description {
   font-size: 11px;
-  color: #95a582;
+  color: #60a5c7;
   margin: 12px 0 22px;
   line-height: 1.9;
 }
@@ -2269,11 +2269,11 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  background: #f5f7ee;
-  border: 1px solid #e5ecd7;
+  background: #eef4f7;
+  border: 1px solid #d7e5ec;
   border-radius: 7px;
   padding: 18px;
-  color: #98ab84;
+  color: #66a8c9;
 }
 .dimension-comparison > div {
   display: flex;
@@ -2283,28 +2283,12 @@ tbody tr:hover {
 .dimension-comparison span {
   font-size: 7px;
   letter-spacing: 1px;
-  color: #9eac8d;
+  color: #6daccc;
 }
 .dimension-comparison strong {
   font-size: 19px;
   font-weight: 500;
-  color: #718957;
-}
-.formwork-measurement {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 14px;
-  background: #fcf5eb;
-  border: 1px solid #f1e4d0;
-  border-radius: 6px;
-  margin-top: 10px;
-  color: #be9d73;
-  font-size: 10px;
-}
-.formwork-measurement strong {
-  margin-left: auto;
-  font-weight: 500;
+  color: #3a82a6;
 }
 .drawer-body section {
   margin-top: 25px;
@@ -2312,7 +2296,7 @@ tbody tr:hover {
 .drawer-body h3 {
   font-size: 11px;
   font-weight: 500;
-  color: #6c8752;
+  color: #387ea1;
   margin-bottom: 13px;
   display: flex;
   align-items: center;
@@ -2322,7 +2306,7 @@ tbody tr:hover {
   display: flex;
   flex-direction: column;
   gap: 11px;
-  color: #a0ad8c;
+  color: #6daccc;
   font-size: 10px;
 }
 .impact-list > span {
@@ -2333,10 +2317,10 @@ tbody tr:hover {
 .impact-list .status-dot {
   width: 3px;
   height: 3px;
-  color: #b5c59d;
+  color: #8cbdd6;
 }
 .source-drawings {
-  border: 1px solid #e8eedc;
+  border: 1px solid #dce8ee;
   border-radius: 6px;
 }
 .source-drawings > a {
@@ -2344,15 +2328,15 @@ tbody tr:hover {
   gap: 9px;
   align-items: center;
   font-size: 10px;
-  color: #90a579;
+  color: #59a1c5;
   padding: 12px 13px;
-  border-bottom: 1px solid #eaf0df;
+  border-bottom: 1px solid #dfeaf0;
 }
 .source-drawings > a:last-child {
   border-bottom: 0;
 }
 .source-drawings > a:hover {
-  background: #f5f8ef;
+  background: #eff5f8;
 }
 .source-drawings > a > span {
   flex: 1;
@@ -2361,13 +2345,13 @@ tbody tr:hover {
   display: block;
   font-size: 8px;
   margin-top: 5px;
-  color: #acb99b;
+  color: #81b8d3;
   text-transform: capitalize;
 }
 .similar-case {
   padding: 15px;
-  background: #f3f7ec;
-  border: 1px solid #e1ecd4;
+  background: #ecf3f7;
+  border: 1px solid #d4e4ec;
   border-radius: 6px;
   display: flex;
   flex-direction: column;
@@ -2380,21 +2364,21 @@ tbody tr:hover {
 .similar-case strong {
   font-size: 11px;
   font-weight: 500;
-  color: #7c9563;
+  color: #4090b8;
   line-height: 1.5;
 }
 .similar-case p {
   font-size: 10px;
-  color: #a0b08c;
+  color: #6faecd;
   line-height: 1.8;
 }
 .similar-case small {
   font-size: 8px;
-  color: #a5b792;
+  color: #79b3d0;
 }
 .similar-case .helper-text {
   font-size: 8px;
-  color: #b0ba9f;
+  color: #85bad4;
 }
 .designer-review-section {
   padding-top: 22px;
@@ -2414,7 +2398,7 @@ tbody tr:hover {
 }
 .review-attribution {
   font-size: 9px;
-  color: #8ca76c;
+  color: #519cc2;
   display: flex;
   align-items: center;
   gap: 5px;
@@ -2425,7 +2409,7 @@ tbody tr:hover {
   justify-content: space-between;
   padding: 18px 26px;
   border-top: 1px solid var(--line);
-  background: #fcfdf9;
+  background: #f9fcfd;
 }
 .toast {
   position: fixed;
@@ -2435,12 +2419,12 @@ tbody tr:hover {
   display: flex;
   align-items: center;
   gap: 11px;
-  border: 1px solid #d7e3cb;
-  background: #f4f9ef;
-  color: #78915f;
+  border: 1px solid #cbdbe3;
+  background: #eff6f9;
+  color: #3e8bb2;
   padding: 15px 17px;
   border-radius: 8px;
-  box-shadow: 0 8px 35px #2c45251c;
+  box-shadow: 0 8px 35px #1c3d4e1c;
   z-index: 100;
   max-width: 650px;
   font-size: 11px;
@@ -2470,7 +2454,7 @@ tbody tr:hover {
   gap: 25px;
   padding: 40px;
   text-align: center;
-  color: #92a37c;
+  color: #5aa1c5;
 }
 .boot-screen .brand {
   margin-bottom: 20px;
@@ -2504,12 +2488,12 @@ tbody tr:hover {
 .login-page {
   display: flex;
   min-height: 100vh;
-  background: #fafbf7;
+  background: #f7fafb;
 }
 .login-story {
   width: 52%;
-  background: #2c4938;
-  color: #e5edda;
+  background: #1e4457;
+  color: #dae7ed;
   display: flex;
   flex-direction: column;
   padding: 43px 52px;
@@ -2517,22 +2501,22 @@ tbody tr:hover {
   position: relative;
 }
 .brand.light {
-  color: #e3ebd5;
+  color: #d5e4eb;
 }
 .brand.light .brand-icon {
-  background: #e1e9d3;
-  color: #365239;
+  background: #d3e2e9;
+  color: #234f65;
 }
 .brand.light small {
-  border-color: #7e9870;
-  color: #b9caaa;
+  border-color: #4998bf;
+  color: #99c5db;
 }
 .login-story-content {
   margin: auto 0;
   padding: 60px 0;
 }
 .light-text {
-  color: #b2c49b;
+  color: #89bcd6;
   letter-spacing: 2px;
 }
 .login-story h1 {
@@ -2541,32 +2525,32 @@ tbody tr:hover {
   letter-spacing: -1.8px;
   line-height: 1.25;
   margin: 25px 0 20px;
-  color: #ecf0e2;
+  color: #e2ebf0;
 }
 .login-story-content > p {
   font-size: 13px;
   line-height: 1.9;
   max-width: 390px;
-  color: #aac198;
+  color: #85bad4;
 }
 .login-blueprint {
   margin-top: 50px;
   position: relative;
   height: 235px;
   max-width: 450px;
-  border: 1px solid #81a06d60;
+  border: 1px solid #4d9ac060;
   background:
-    linear-gradient(#73906313 1px, transparent 1px),
-    linear-gradient(90deg, #73906313 1px, transparent 1px);
+    linear-gradient(#3f8db413 1px, transparent 1px),
+    linear-gradient(90deg, #3f8db413 1px, transparent 1px);
   background-size: 20px 20px;
   transform: rotate(-2deg);
 }
 .bp-room {
   position: absolute;
-  border: 3px double #85a37160;
+  border: 3px double #529dc260;
   font-size: 8px;
   letter-spacing: 1px;
-  color: #9bb58870;
+  color: #70aecd70;
   display: grid;
   place-items: center;
 }
@@ -2599,7 +2583,7 @@ tbody tr:hover {
   align-items: center;
   gap: 7px;
   padding: 13px 19px;
-  background: #304c35;
+  background: #20485c;
   border: 1px dashed #b5a167;
   border-radius: 4px;
 }
@@ -2610,21 +2594,21 @@ tbody tr:hover {
   position: absolute;
   bottom: 55px;
   right: 20px;
-  background: #e3ebd2;
-  color: #617a46;
-  border: 1px solid #d7e3c5;
+  background: #d2e3eb;
+  color: #326f8e;
+  border: 1px solid #c5d9e3;
   font-size: 10px;
   padding: 13px;
   border-radius: 5px;
   display: flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 5px 30px #182e281a;
+  box-shadow: 0 5px 30px #1229341a;
 }
 .login-points {
   display: flex;
   gap: 24px;
-  color: #a8be95;
+  color: #80b7d3;
   font-size: 10px;
   margin-top: 27px;
 }
@@ -2640,13 +2624,13 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: #c5d3b3;
+  color: #a6cde0;
 }
 .login-foot span {
   font-size: 7px;
   font-weight: 400;
   letter-spacing: 1.5px;
-  color: #8da879;
+  color: #5ba2c6;
 }
 .login-form-wrap {
   flex: 1;
@@ -2672,14 +2656,14 @@ tbody tr:hover {
 }
 .login-form > p {
   font-size: 11px;
-  color: #a0ac8f;
+  color: #6fadcc;
   margin-top: 10px;
   margin-bottom: 30px;
 }
 .login-form > label {
   margin-bottom: 20px;
   font-size: 11px;
-  color: #829a6c;
+  color: #4797bf;
 }
 .login-form input {
   background: #fff;
@@ -2701,8 +2685,8 @@ tbody tr:hover {
   text-underline-offset: 3px;
 }
 .demo-login {
-  background: #f2f6e9;
-  border: 1px solid #e2ead4;
+  background: #e9f2f6;
+  border: 1px solid #d4e3ea;
   border-radius: 7px;
   padding: 16px;
   margin-top: 22px;
@@ -2710,18 +2694,18 @@ tbody tr:hover {
 .demo-login strong {
   font-size: 10px;
   font-weight: 500;
-  color: #7f995f;
+  color: #4090b8;
 }
 .demo-login p {
   font-size: 10px;
-  color: #a2b28f;
+  color: #73b0ce;
   line-height: 1.8;
   margin-top: 6px;
 }
 .demo-login code {
   display: block;
   font-size: 9px;
-  color: #92a677;
+  color: #59a0c4;
   margin-top: 10px;
   overflow-wrap: anywhere;
 }
@@ -2730,12 +2714,12 @@ tbody tr:hover {
   align-items: center;
   gap: 10px;
   font-size: 10px;
-  color: #a4b393;
+  color: #77b2cf;
   margin-top: 25px;
   line-height: 1.8;
 }
 .approval-note > svg {
-  color: #96ac7e;
+  color: #62a6c8;
 }
 @media (min-width: 1500px) {
   .page-content {
@@ -2989,7 +2973,7 @@ tbody tr:hover {
   .sidebar {
     transform: translateX(-100%);
     transition: transform 0.2s;
-    box-shadow: 8px 0 40px #30462615;
+    box-shadow: 8px 0 40px #1c3f5015;
   }
   .sidebar.mobile-open {
     transform: translateX(0);
@@ -3356,3 +3340,68 @@ tbody tr:hover {
   margin-top: 8px;
   line-height: 1.6;
 }
+
+/* Kumkang Kind Ai'Tech branding */
+.brand-logo {
+  width: 44px;
+  height: 44px;
+  flex-shrink: 0;
+  object-fit: contain;
+  border-radius: 50%;
+}
+.brand-name {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  font-size: 18px;
+  line-height: 1.2;
+  letter-spacing: -0.4px;
+}
+.brand-subtitle {
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 1px;
+  color: #168fc4;
+}
+.password-input {
+  position: relative;
+  display: block;
+}
+.password-input input {
+  width: 100%;
+  padding-right: 48px;
+}
+.password-toggle {
+  position: absolute;
+  right: 4px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 40px;
+  height: 40px;
+  border: 0;
+  border-radius: 5px;
+  background: transparent;
+  color: #087eac;
+  cursor: pointer;
+}
+.password-toggle:hover {
+  background: #e9f3f9;
+}
+.brand.light .brand-subtitle {
+  color: #82d4f3;
+}
+.sidebar .brand {
+  gap: 9px;
+}
+.sidebar .brand-name {
+  font-size: 16px;
+}
+.sidebar .brand-logo {
+  width: 38px;
+  height: 38px;
+}
+
+.viewer-actions { display: flex; align-items: center; gap: 8px; }
+.viewer-toolbar { flex-wrap: wrap; gap: 10px; }

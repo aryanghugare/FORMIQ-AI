@@ -1,6 +1,13 @@
 "use client";
 import { useState } from "react";
-import { ArrowRight, ShieldCheck, Layers3, ScanLine } from "lucide-react";
+import {
+  ArrowRight,
+  ShieldCheck,
+  Layers3,
+  ScanLine,
+  Eye,
+  EyeOff,
+} from "lucide-react";
 import Link from "next/link";
 export default function Login({
   demo,
@@ -12,6 +19,7 @@ export default function Login({
   const [email, setEmail] = useState(demo ? "designer@formiq.ai" : ""),
     [name, setName] = useState(""),
     [password, setPassword] = useState(demo ? "Formiq@2026" : ""),
+    [showPassword, setShowPassword] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
   async function submit(e: React.FormEvent) {
@@ -36,10 +44,19 @@ export default function Login({
     <main className="login-page">
       <section className="login-story">
         <div className="brand light">
-          <span className="brand-icon">F</span> FORMIQ <small>AI</small>
+          <img
+            className="brand-logo"
+            src="/brand-logo.jpeg"
+            alt=""
+            width={44}
+            height={44}
+          />
+          <span className="brand-name">
+            Kumkang Kind<span className="brand-subtitle">Ai'Tech</span>
+          </span>
         </div>
         <div className="login-story-content">
-          <span className="eyebrow light-text">FORMWORK DESIGN ASSURANCE</span>
+          <span className="eyebrow light-text">CAD REVISION ASSURANCE</span>
           <h1>
             Every revision traced.
             <br />
@@ -78,7 +95,11 @@ export default function Login({
           <span className="pill green">
             <span className="status-dot" /> DESIGN WORKSPACE
           </span>
-          <h2>{signup ? "Create your account." : "Welcome to FORMIQ."}</h2>
+          <h2>
+            {signup
+              ? "Create your account."
+              : "Welcome to Kumkang Kind Ai'Tech."}
+          </h2>
           <p>
             {signup
               ? "Start your own design assurance workspace."
@@ -113,17 +134,29 @@ export default function Login({
           </label>
           <label>
             Password
-            <input
-              type="password"
-              name="password"
-              autoComplete={signup ? "new-password" : "current-password"}
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              required
-              minLength={signup ? 10 : undefined}
-              maxLength={200}
-              placeholder={signup ? "At least 10 characters" : undefined}
-            />
+            <span className="password-input">
+              <input
+                type={showPassword ? "text" : "password"}
+                name="password"
+                autoComplete={signup ? "new-password" : "current-password"}
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                required
+                minLength={signup ? 10 : undefined}
+                maxLength={200}
+                placeholder={signup ? "At least 10 characters" : undefined}
+              />
+              <button
+                type="button"
+                className="password-toggle"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+                title={showPassword ? "Hide password" : "Show password"}
+                aria-pressed={showPassword}
+                onClick={() => setShowPassword((visible) => !visible)}
+              >
+                {showPassword ? <EyeOff size={19} /> : <Eye size={19} />}
+              </button>
+            </span>
           </label>
           {error && (
             <div role="alert" className="alert error">
@@ -141,7 +174,9 @@ export default function Login({
             <ArrowRight size={17} />
           </button>
           <p className="auth-switch">
-            {signup ? "Already have an account? " : "New to FORMIQ? "}
+            {signup
+              ? "Already have an account? "
+              : "New to Kumkang Kind Ai'Tech? "}
             <Link href={signup ? "/login" : "/register"}>
               {signup ? "Sign in" : "Create an account"}
             </Link>

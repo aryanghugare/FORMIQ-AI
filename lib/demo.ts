@@ -1,6 +1,6 @@
 import type { MemoryCase } from "./types";
 // Actual ASCII DXF fixtures, not precomputed findings.
-export function demoDxf(revision: "old" | "new" | "formwork") {
+export function demoDxf(revision: "old" | "new") {
   const pairs: (string | number)[] = [
     0,
     "SECTION",
@@ -171,15 +171,15 @@ export function demoDxf(revision: "old" | "new" | "formwork") {
 export const demoMemory: MemoryCase[] = [
   {
     id: "memory-opening",
-    title: "Opening revision at a wall-panel interface",
+    title: "Opening width revision",
     category: "Openings",
     project: "KK-DEMO-018",
-    drawing: "FW-42 Rev.03",
+    drawing: "ARCH-42 Rev.03",
     reference: "RFI-017",
     description:
-      "An opening width increased by 100 mm after the initial panel layout was issued.",
+      "An opening width increased by 100 mm after the initial architectural layout was issued.",
     resolution:
-      "Review the adjoining wall panels and opening configuration. Coordinate dimensional changes before updating the fabrication schedule.",
+      "Review the adjoining wall layout and opening configuration. Coordinate dimensional changes before updating the fabrication schedule.",
     tags: ["Door", "Window", "Opening", "D14"],
     approvedBy: "Demo design lead",
     approvedAt: "2026-09-12",
@@ -187,15 +187,14 @@ export const demoMemory: MemoryCase[] = [
   },
   {
     id: "memory-beam",
-    title: "Beam depth and soffit panel coordination",
+    title: "Beam depth revision",
     category: "Structure",
     project: "KK-DEMO-024",
-    drawing: "FW-B08 Rev.02",
+    drawing: "STR-B08 Rev.02",
     reference: "RFI-032",
-    description:
-      "Architectural beam depth differed from the selected formwork soffit arrangement.",
+    description: "Beam depth changed between structural revisions.",
     resolution:
-      "Confirm the structural depth with the engineer and update the soffit and adjoining panel details together.",
+      "Confirm the structural depth with the engineer and verify the revised structural details.",
     tags: ["Beam", "Slab", "B02"],
     approvedBy: "Demo design lead",
     approvedAt: "2026-09-08",
@@ -206,7 +205,7 @@ export const demoMemory: MemoryCase[] = [
     title: "Drawing revision before fabrication release",
     category: "Fabrication",
     project: "KK-DEMO-011",
-    drawing: "FW-L10 Rev.04",
+    drawing: "ARCH-L10 Rev.04",
     reference: "NCR-008",
     description:
       "A late dimension change affected a fabrication schedule that had already been issued.",

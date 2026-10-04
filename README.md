@@ -1,6 +1,6 @@
-# FORMIQ AI
+# Kumkang Kind Ai'Tech
 
-A Next.js application where users create an account, sign in, and use a private workspace to upload CAD drawings, compare architectural revisions against formwork, review findings and export reports. The original project presentation is included in the repository.
+A Next.js application where users create an account, sign in, and use a private workspace to upload CAD drawings, compare Architecture revisions or Structure revisions, review findings and export reports. The original project presentation is included in the repository.
 
 ## Run with MongoDB
 
@@ -36,14 +36,16 @@ MongoDB starts with an empty workspace and does not seed demo data. Existing loc
 ## Use the app
 
 1. **Projects:** create and select your project.
-2. **Drawing library:** upload previous and latest architectural DXF drawings and the current formwork drawing. “Architecture”, “Structure” and “Formwork” identify each drawing's discipline.
+2. **Drawing library:** upload previous and latest DWG or DXF drawings. Choose Architecture or Structure as the discipline.
    Use **Edit** to correct the name, revision or discipline, and **Delete** to remove an unused drawing and its stored files. Drawings used in an analysis are protected to preserve review history.
-3. **Revision review:** select both architectural revisions and the formwork drawing, then run analysis. Formwork is the construction mould/layout drawing checked against the latest architecture.
+3. **Revision review:** choose a discipline, select previous and latest revisions, then run analysis. Architecture compares with Architecture; Structure compares with Structure.
 4. **Issue register:** inspect source-linked findings and accept, reject or investigate them with a note.
 5. **Design memory:** save approved references and resolutions.
 6. **Reports:** download CSV or printable HTML for a selected analysis.
 7. **Settings:** set dimension tolerance and confirm fabrication/BOM release when applicable.
 8. **Overview:** see project totals and recent activity. **Sign out** stays visible at the bottom of the sidebar.
+
+Tagged dimensions and tagged schedule text retain their existing checks. Ordinary linear dimensions are matched by layer, reference point and direction; confirm these automatic matches. When either drawing lacks readable dimensions, geometry additions/removals are also compared at their existing coordinates. Moved geometry appears as removed and added, and plain numbers are not inferred as measurements. Dimension tolerance applies to dimension checks; geometry uses 0.001 mm coordinate precision. Existing dimension-free uploads are re-extracted from their originals during analysis when conversion is available. Geometry changes are summarized by spatial area and layer, with counts and highlighted extents. Up to 200 review areas are shown; overflow areas are combined into a summary with all change counts retained. Nearby canvas markers cluster at the current zoom, including markers in older analyses. Use Overlay, zoom and the findings list to inspect changes; Hide findings clears the markers. A large difference ratio prompts an origin/floor alignment check.
 
 Every account has its own projects, drawings, findings, reports and design memory. Users cannot read or change another account's data. Existing data from the earlier shared workspace remains with its original account. Findings require designer validation; the app does not approve engineering drawings automatically.
 

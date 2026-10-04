@@ -94,7 +94,7 @@ const descriptions: Record<View, string> = {
   projects: "Keep your drawing sets and design reviews in one place.",
   drawings:
     "Controlled drawing sets. Every file, every revision, accounted for.",
-  review: "Compare meaningful changes and trace their formwork impact.",
+  review: "Compare revisions within Architecture or Structure.",
   issues: "Turn detected changes into considered design decisions.",
   memory:
     "Approved knowledge from previous projects, ready for your next review.",
@@ -299,9 +299,7 @@ export default function Workspace({
   );
   const latest =
     drawings.find((d) => d.id === run?.newId) ??
-    drawings.find(
-      (d) => d.status === "ready" && d.discipline === "architecture",
-    );
+    drawings.find((d) => d.status === "ready");
   const previous = drawings.find((d) => d.id === run?.oldId);
   const activity =
     data?.audit.filter((a) => a.projectId === projectId).slice(0, 5) ?? [];
@@ -366,7 +364,16 @@ export default function Workspace({
     return (
       <main className="boot-screen">
         <div className="brand">
-          <span className="brand-icon">F</span> FORMIQ <small>AI</small>
+          <img
+            className="brand-logo"
+            src="/brand-logo.jpeg"
+            alt=""
+            width={44}
+            height={44}
+          />
+          <span className="brand-name">
+            Kumkang Kind<span className="brand-subtitle">Ai'Tech</span>
+          </span>
         </div>
         {loadError ? (
           <>
@@ -440,7 +447,17 @@ export default function Workspace({
                 </td>
                 <td>
                   <div className="measurement-cell">
-                    {i.previous !== undefined ? (
+                    {i.rule.startsWith("GEO-") ? (
+                      <strong>
+                        {i.geometry
+                          ? `${i.geometry.added} added · ${i.geometry.removed} removed`
+                          : i.rule === "GEO-01"
+                            ? "Geometry added"
+                            : i.rule === "GEO-02"
+                              ? "Geometry removed"
+                              : "Geometry changed"}
+                      </strong>
+                    ) : i.previous !== undefined ? (
                       <>
                         {formatNumber(i.previous)} <ArrowRight size={12} />{" "}
                         <strong>
@@ -460,9 +477,6 @@ export default function Workspace({
                     )}
                     {i.current !== undefined && <span>mm</span>}
                   </div>
-                  {i.formwork !== undefined && (
-                    <small>Formwork: {formatNumber(i.formwork)} mm</small>
-                  )}
                 </td>
                 <td>
                   <Pill
@@ -540,7 +554,16 @@ export default function Workspace({
               navigate("overview");
             }}
           >
-            <span className="brand-icon">F</span> FORMIQ <small>AI</small>
+            <img
+              className="brand-logo"
+              src="/brand-logo.jpeg"
+              alt=""
+              width={44}
+              height={44}
+            />
+            <span className="brand-name">
+              Kumkang Kind<span className="brand-subtitle">Ai'Tech</span>
+            </span>
           </a>
           <div className="workspace-label">DESIGN ASSURANCE</div>
           <div className="sidebar-divider" />
@@ -574,7 +597,7 @@ export default function Workspace({
               <strong>AI assists. You approve.</strong>
               <p>Every finding is a starting point for your expertise.</p>
               <button onClick={() => setModal("help")}>
-                How FORMIQ works <ArrowUpRight size={13} />
+                How Kumkang Kind Ai'Tech works <ArrowUpRight size={13} />
               </button>
             </div>
             <button
@@ -659,14 +682,13 @@ export default function Workspace({
                 </div>
               )}
             </div>
-            <div className="avatar small">DL</div>
           </div>
         </header>
         <main className="page-content">
           <div className="page-heading">
             <div>
               <div className="eyebrow">
-                <span className="tiny-square" /> FORMIQ INTELLIGENCE{" "}
+                <span className="tiny-square" /> KUMKANG KIND AI'TECH{" "}
                 {project?.demo && (
                   <span className="demo-label">DEMO PROJECT</span>
                 )}
@@ -772,7 +794,7 @@ export default function Workspace({
                   label="High-priority findings"
                   value={high.length}
                   icon={TriangleAlert}
-                  detail="Potential formwork impact"
+                  detail="Potential design impact"
                   tone="amber"
                 />
                 <Stat
@@ -943,7 +965,7 @@ export default function Workspace({
                   ) : (
                     <Empty
                       title="No drawings yet"
-                      description="Add your architectural revisions and formwork set."
+                      description="Add two revisions of Architecture or Structure."
                       action={uploadButton}
                     />
                   )}
@@ -1233,7 +1255,7 @@ export default function Workspace({
                 ) : (
                   <Empty
                     title="Add your first drawing set"
-                    description="Upload the old architectural revision, the new revision, and the current formwork drawing."
+                    description="Upload previous and latest revisions of the same drawing discipline."
                     action={uploadButton}
                   />
                 )}
@@ -1283,7 +1305,10 @@ export default function Workspace({
                           <h2>Drawing comparison</h2>
                           <p>
                             {previous?.revision} <ArrowRight size={12} />{" "}
-                            {latest?.revision} · Architecture
+                            {latest?.revision} ·{" "}
+                            {latest?.discipline === "structure"
+                              ? "Structure"
+                              : "Architecture"}
                           </p>
                         </div>
                         <Pill tone="green">2D model space</Pill>
@@ -1361,7 +1386,7 @@ export default function Workspace({
                   <Empty
                     icon={ScanLine}
                     title="Bring your revisions into focus"
-                    description="Select two architectural revisions and a formwork drawing to compare tagged dimensions and detect coordination issues."
+                    description="Select two Architecture revisions or two Structure revisions to compare dimensions and geometry."
                     action={analysisButton}
                   />
                 </section>
@@ -1370,7 +1395,7 @@ export default function Workspace({
                 {[
                   "Read drawings",
                   "Compare revisions",
-                  "Check formwork",
+                  "Check dimensions",
                   "Trace impact",
                   "Designer validates",
                 ].map((s, i) => (
@@ -1585,10 +1610,7 @@ export default function Workspace({
                                     ?.revision
                                 }
                                 <small>
-                                  {
-                                    drawings.find((d) => d.id === r.formworkId)
-                                      ?.name
-                                  }
+                                  {drawings.find((d) => d.id === r.newId)?.name}
                                 </small>
                               </td>
                               <td>
@@ -1685,7 +1707,8 @@ export default function Workspace({
               <ShieldCheck size={13} /> AI assists. Designers approve.
             </span>
             <span>
-              FORMIQ AI <span className="footer-dot">·</span> Kumkang Kind
+              Kumkang Kind Ai'Tech <span className="footer-dot">·</span> Kumkang
+              Kind
             </span>
           </footer>
         </main>
@@ -1804,7 +1827,7 @@ export default function Workspace({
       {modal === "analysis" && project && (
         <ModalFrame
           title="Run revision analysis"
-          subtitle="Choose your source drawings. FORMIQ will compare, check, and explain."
+          subtitle="Choose your source drawings. Kumkang Kind Ai'Tech will compare, check, and explain."
           onClose={closeModal}
         >
           <AnalysisForm
@@ -1843,33 +1866,37 @@ export default function Workspace({
       )}
       {modal === "help" && (
         <ModalFrame
-          title="How FORMIQ works"
-          subtitle="A focused prototype for aluminium formwork design assurance."
+          title="How Kumkang Kind Ai'Tech works"
+          subtitle="Architecture and structural drawing revision review."
           onClose={closeModal}
           wide
         >
           <div className="help-content">
             <h3>1. Upload a controlled drawing set</h3>
             <p>
-              Choose the old and new architectural revisions and the current
-              formwork drawing. Originals are retained and available for
-              download.
+              Choose previous and latest revisions of the same discipline:
+              Architecture or Structure. Originals are retained and available
+              for download.
             </p>
             <h3>2. Make dimensions traceable</h3>
             <p>
-              For the current CAD checker, use linear DIMENSION entities on
-              tagged layers such as <code>DOOR_D14</code>, or dimension text
-              containing <code>D14</code>. Explicit schedule text such as{" "}
-              <code>D14 = 1000 mm</code> is also supported. Give each checked
-              dimension a unique tag.
+              For the most reliable element matching, use linear DIMENSION
+              entities on tagged layers such as <code>DOOR_D14</code>, or
+              dimension text containing <code>D14</code>. Explicit schedule text
+              such as <code>D14 = 1000 mm</code> is also supported. Give each
+              checked dimension a unique tag. Ordinary untagged linear
+              dimensions are also compared by layer, reference point and
+              direction. If dimensions are unavailable, geometry additions and
+              removals are reported; moved geometry appears as removed and
+              added.
             </p>
             <h3>3. Check CAD extraction</h3>
             <p>
               Supported: ASCII DXF, 2D model space, lines, polylines, circles,
               arcs, text, and uniform block inserts. Set drawing units
               explicitly. Angular dimensions, 3D geometry, splines, external
-              references and untagged measurements need manual review.
-              Extraction notes appear alongside analysis.
+              references require manual review. Automatic dimension matches also
+              need verification. Extraction notes appear alongside analysis.
             </p>
             <h3>4. Convert DWG when needed</h3>
             <p>
@@ -1896,9 +1923,6 @@ export default function Workspace({
               </a>
               <a href="/samples/ARCH-L12-Rev-06.dxf" download>
                 Architecture Rev.06 <Download size={13} />
-              </a>
-              <a href="/samples/FW-L12.dxf" download>
-                Formwork L12 <Download size={13} />
               </a>
             </div>
           </div>
@@ -2092,7 +2116,6 @@ function DrawingInfoForm({
           <select name="discipline" defaultValue={drawing.discipline}>
             <option value="architecture">Architecture</option>
             <option value="structure">Structure</option>
-            <option value="formwork">Formwork</option>
           </select>
         </label>
         <label>
@@ -2204,7 +2227,6 @@ function UploadForm({
           <select name="discipline">
             <option value="architecture">Architecture</option>
             <option value="structure">Structure</option>
-            <option value="formwork">Formwork</option>
           </select>
         </label>
         <label>
@@ -2246,25 +2268,33 @@ function AnalysisForm({
   busy: boolean;
   onSubmit: (input: Record<string, FormDataEntryValue>) => void;
 }) {
-  const arch = drawings
-    .filter((d) => d.discipline === "architecture" && d.status === "ready")
-    .sort(
-      (a, b) =>
-        a.uploadedAt.localeCompare(b.uploadedAt) ||
-        a.revision.localeCompare(b.revision, undefined, { numeric: true }),
-    );
-  const fw = drawings.filter(
-    (d) => d.discipline === "formwork" && d.status === "ready",
-  );
-  const [oldId, setOldId] = useState(arch[0]?.id ?? ""),
-    [newId, setNewId] = useState(arch.at(-1)?.id ?? "");
-  const ready = arch.length >= 2 && fw.length >= 1;
+  const readyDrawings = drawings.filter((d) => d.status === "ready");
+  const revisionsFor = (discipline: Drawing["discipline"]) =>
+    readyDrawings
+      .filter((d) => d.discipline === discipline)
+      .sort(
+        (a, b) =>
+          a.uploadedAt.localeCompare(b.uploadedAt) ||
+          a.revision.localeCompare(b.revision, undefined, { numeric: true }),
+      );
+  const defaultDiscipline =
+    revisionsFor("architecture").length >= 2
+      ? "architecture"
+      : revisionsFor("structure").length >= 2
+        ? "structure"
+        : "architecture";
+  const [discipline, setDiscipline] =
+    useState<Drawing["discipline"]>(defaultDiscipline);
+  const revisions = revisionsFor(discipline);
+  const [oldId, setOldId] = useState(revisions[0]?.id ?? ""),
+    [newId, setNewId] = useState(revisions.at(-1)?.id ?? "");
+  const ready = revisions.length >= 2;
   return (
     <form
       className="modal-form"
-      onSubmit={(e) => {
-        e.preventDefault();
-        onSubmit(Object.fromEntries(new FormData(e.currentTarget)));
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSubmit({ oldId, newId });
       }}
     >
       <div className="analysis-steps">
@@ -2284,24 +2314,41 @@ function AnalysisForm({
           <i>4</i>Explain
         </span>
       </div>
+      <label>
+        Comparison discipline
+        <select
+          value={discipline}
+          onChange={(event) => {
+            const next = event.target.value as Drawing["discipline"];
+            const nextRevisions = revisionsFor(next);
+            setDiscipline(next);
+            setOldId(nextRevisions[0]?.id ?? "");
+            setNewId(nextRevisions.at(-1)?.id ?? "");
+          }}
+        >
+          <option value="architecture">Architecture</option>
+          <option value="structure">Structure</option>
+        </select>
+      </label>
       {!ready && (
         <div className="alert warning">
-          Upload at least two processed architectural revisions and one
-          processed formwork drawing before running analysis.
+          Upload at least two processed{" "}
+          {discipline === "architecture" ? "Architecture" : "Structure"}{" "}
+          revisions before running analysis.
         </div>
       )}
       <label>
-        Previous architectural revision
+        Previous revision
         <select
           name="oldId"
           required
           value={oldId}
-          onChange={(e) => setOldId(e.target.value)}
+          onChange={(event) => setOldId(event.target.value)}
         >
           <option value="" disabled>
             Select previous revision
           </option>
-          {arch.map((d) => (
+          {revisions.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name} · {d.revision}
             </option>
@@ -2309,30 +2356,17 @@ function AnalysisForm({
         </select>
       </label>
       <label>
-        Latest architectural revision
+        Latest revision
         <select
           name="newId"
           required
           value={newId}
-          onChange={(e) => setNewId(e.target.value)}
+          onChange={(event) => setNewId(event.target.value)}
         >
           <option value="" disabled>
             Select latest revision
           </option>
-          {arch.map((d) => (
-            <option key={d.id} value={d.id}>
-              {d.name} · {d.revision}
-            </option>
-          ))}
-        </select>
-      </label>
-      <label>
-        Current formwork drawing
-        <select name="formworkId" required defaultValue={fw[0]?.id ?? ""}>
-          <option value="" disabled>
-            Select formwork drawing
-          </option>
-          {fw.map((d) => (
+          {revisions.map((d) => (
             <option key={d.id} value={d.id}>
               {d.name} · {d.revision}
             </option>
@@ -2342,8 +2376,9 @@ function AnalysisForm({
       <div className="notice small-notice">
         <ShieldCheck size={18} />
         <p>
-          8 supported checks. Findings are sent for designer validation. No
-          drawing is automatically approved.
+          Dimension checks plus geometry comparison when dimensions are
+          unavailable. Compare revisions within the same discipline. Findings
+          require designer validation.
         </p>
       </div>
       <div className="form-footer">
@@ -2367,6 +2402,7 @@ function AnalysisForm({
     </form>
   );
 }
+
 function MemoryCard({ memory: m }: { memory: MemoryCase }) {
   const [expanded, setExpanded] = useState(false);
   return (
@@ -2705,21 +2741,30 @@ function IssueDrawer({
           <div className="dimension-comparison">
             <div>
               <span>PREVIOUS</span>
-              <strong>{dimension(i.previous)}</strong>
+              <strong>
+                {i.rule.startsWith("GEO-")
+                  ? i.geometry
+                    ? `${i.geometry.removed} removed`
+                    : i.rule === "GEO-02"
+                      ? "Present"
+                      : "Absent"
+                  : dimension(i.previous)}
+              </strong>
             </div>
             <ArrowRight size={17} />
             <div>
               <span>LATEST</span>
-              <strong>{dimension(i.current)}</strong>
+              <strong>
+                {i.rule.startsWith("GEO-")
+                  ? i.geometry
+                    ? `${i.geometry.added} added`
+                    : i.rule === "GEO-01"
+                      ? "Present"
+                      : "Absent"
+                  : dimension(i.current)}
+              </strong>
             </div>
           </div>
-          {i.formwork !== undefined && (
-            <div className="formwork-measurement">
-              <Layers3 size={17} />
-              <span>Current formwork</span>
-              <strong>{dimension(i.formwork)}</strong>
-            </div>
-          )}
           <section>
             <h3>Potential impact</h3>
             <div className="impact-list">

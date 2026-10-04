@@ -100,9 +100,8 @@ test(
       const samples = {
         old: "ARCH-L12-Rev-05.dxf",
         new: "ARCH-L12-Rev-06.dxf",
-        formwork: "FW-L12.dxf",
       };
-      for (const variant of ["old", "new", "formwork"] as const) {
+      for (const variant of ["old", "new"] as const) {
         const form = new FormData(),
           content = readFileSync(
             join("public/samples", samples[variant]),
@@ -110,10 +109,7 @@ test(
           );
         form.set("projectId", project.id);
         form.set("revision", variant);
-        form.set(
-          "discipline",
-          variant === "formwork" ? "formwork" : "architecture",
-        );
+        form.set("discipline", "architecture");
         form.set("file", new File([content], samples[variant]));
         const response = await call("drawings", "POST", form);
         assert.equal(response.status, 201);
@@ -134,18 +130,17 @@ test(
         projectId: project.id,
         oldId: ids[0],
         newId: ids[1],
-        formworkId: ids[2],
       });
       assert.equal(analysis.status, 201);
       const result = await analysis.json();
-      assert.equal(result.run.checks, 8);
-      assert.equal(result.issues.length, 7);
+      assert.equal(result.run.checks, 5);
+      assert.equal(result.issues.length, 4);
       const mismatch = result.issues.find(
         (issue: { tag: string; rule: string }) =>
-          issue.tag === "D14" && issue.rule === "FW-01",
+          issue.tag === "D14" && issue.rule === "REV-01",
       );
       assert.equal(mismatch.current, 1000);
-      assert.equal(mismatch.formwork, 900);
+      assert.equal(mismatch.previous, 900);
       assert.equal(
         (
           await call(`issues/${mismatch.id}`, "PATCH", {
@@ -193,10 +188,10 @@ test(
             title: "Verified opening detail",
             category: "Openings",
             project: "M-1",
-            drawing: samples.formwork,
+            drawing: samples.new,
             reference: "RFI-017",
             description: "Opening changed from 900 mm to 1000 mm.",
-            resolution: "Update formwork panels before fabrication release.",
+            resolution: "Verify revised design details before release.",
             tags: ["Door"],
             sourceUrl: "https://example.com/rfi-017",
           })

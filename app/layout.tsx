@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 export const metadata: Metadata = {
-  title: "FORMIQ AI — Design Assurance",
+  title: "Kumkang Kind Ai'Tech — Design Assurance",
+  icons: { icon: "/brand-logo.jpeg", apple: "/brand-logo.jpeg" },
   description:
-    "Formwork intelligence, quality and revision review. Every revision traced. Every risk visible.",
+    "Architecture and structural drawing revision review. Every revision traced. Every risk visible.",
 };
 export default function RootLayout({
   children,

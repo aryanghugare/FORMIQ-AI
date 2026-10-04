@@ -36,7 +36,7 @@ const cleanText = (s: string) =>
     .replace(/[{}]/g, "")
     .replace(/%%c/gi, "Ø");
 
-/** Focused ASCII DXF parser. Uses only explicit tag associations; never guesses by proximity. */
+/** Focused ASCII DXF parser. Untagged dimensions use an exact layer/anchor/axis reference. */
 export function parseDxf(content: string): CadModel {
   if (content.startsWith("AutoCAD Binary DXF"))
     throw new Error(
@@ -333,23 +333,40 @@ export function parseDxf(content: string): CadModel {
         if (endpointsPresent)
           entities.push({ id, type: "line", layer, points: [p1, p2] });
         if (
-          tag &&
           Number.isFinite(value) &&
           value > 0 &&
           (get(r, 42) !== undefined || get(r, 13) !== undefined)
         ) {
+          const axis =
+            dimType === 0
+              ? transform({
+                  x:
+                    point(r, 13, 23).x + Math.cos((num(r, 50) * Math.PI) / 180),
+                  y:
+                    point(r, 13, 23).y + Math.sin((num(r, 50) * Math.PI) / 180),
+                })
+              : p2;
+          const direction =
+            ((Math.atan2(axis.y - p1.y, axis.x - p1.x) * 180) / Math.PI + 360) %
+            180;
           measurements.push({
-            tag,
-            kind: kindFrom(tag, layer),
+            tag:
+              tag ??
+              `DIM@${layer}:${Math.round(anchor.x * 1000) / 1000},${Math.round(anchor.y * 1000) / 1000}:${dimType}:${Math.round(direction * 100) / 100}`,
+            kind: tag ? kindFrom(tag, layer) : "Dimension",
             value: Math.round(value * 1000) / 1000,
             point: anchor,
             layer,
             entityId: id,
             source: "dimension",
           });
+          if (!tag)
+            warnings.add(
+              "Untagged linear dimensions are matched by layer, reference point and direction. Moved references can appear as added/removed dimensions; verify automatic matches.",
+            );
         } else
           warnings.add(
-            "Some linear dimensions have no stable element tag. Use layers such as DOOR_D14 or dimension text containing D14.",
+            "An invalid or zero-length linear dimension was excluded.",
           );
       } else if (!["SEQEND", "VERTEX", "ENDSEC", "EOF"].includes(r.type))
         unsupported.add(r.type);
@@ -362,7 +379,7 @@ export function parseDxf(content: string): CadModel {
     );
   if (!measurements.length)
     warnings.add(
-      "No explicitly tagged linear measurements were found. Add tagged DIMENSION entities or annotations such as D14 = 1000 mm.",
+      "No readable linear dimensions were found. Revision analysis will compare extracted geometry instead; plain text numbers are not treated as measurements.",
     );
   let pointCount = 0;
   const bounds = {

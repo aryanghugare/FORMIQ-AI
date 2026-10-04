@@ -1,4 +1,4 @@
-export type Discipline = "architecture" | "structure" | "formwork";
+export type Discipline = "architecture" | "structure";
 export type ReviewStatus = "open" | "accepted" | "rejected" | "investigating";
 export type Severity = "high" | "medium" | "low";
 export interface Point {
@@ -81,8 +81,13 @@ export interface Issue {
   description: string;
   previous?: number;
   current?: number;
-  formwork?: number;
   point: Point;
+  geometry?: {
+    added: number;
+    removed: number;
+    layer: string;
+    bounds: CadModel["bounds"];
+  };
   impact: string[];
   drawingIds: string[];
   createdAt: string;
@@ -98,7 +103,6 @@ export interface AnalysisRun {
   createdBy: string;
   oldId: string;
   newId: string;
-  formworkId: string;
   issueCount: number;
   durationMs: number;
   checks: number;

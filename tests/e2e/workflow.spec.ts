@@ -40,7 +40,6 @@ test("upload → CAD analysis → designer review → reports and persistence", 
   for (const [file, discipline, revision] of [
     ["ARCH-L12-Rev-05.dxf", "architecture", "Rev.05"],
     ["ARCH-L12-Rev-06.dxf", "architecture", "Rev.06"],
-    ["FW-L12.dxf", "formwork", "Rev.03"],
   ]) {
     await page
       .locator(".heading-actions")
@@ -57,7 +56,7 @@ test("upload → CAD analysis → designer review → reports and persistence", 
       .click();
     await expect(page.getByRole("dialog")).toHaveCount(0);
   }
-  await expect(page.getByText("Ready", { exact: true })).toHaveCount(3);
+  await expect(page.getByText("Ready", { exact: true })).toHaveCount(2);
   await page.getByRole("button", { name: "Run analysis", exact: true }).click();
   await page
     .getByRole("dialog")
@@ -67,7 +66,7 @@ test("upload → CAD analysis → designer review → reports and persistence", 
     page.getByRole("heading", { name: "Drawing comparison" }),
   ).toBeVisible();
   await expect(
-    page.getByText("8 checks · 7 findings · Tolerance 1 mm"),
+    page.getByText("5 checks · 4 findings · Tolerance 1 mm"),
   ).toBeVisible();
   await page.screenshot({
     path: "test-results/review-desktop.png",
@@ -82,12 +81,12 @@ test("upload → CAD analysis → designer review → reports and persistence", 
     .click();
   await page
     .getByRole("button", {
-      name: "Review D14: formwork dimension mismatch",
+      name: "Review Door D14 revised",
       exact: true,
     })
     .click();
   const drawer = page.getByRole("dialog", {
-    name: "Review D14: formwork dimension mismatch",
+    name: "Review Door D14 revised",
   });
   await drawer.getByLabel("Finding status").selectOption("accepted");
   await expect(

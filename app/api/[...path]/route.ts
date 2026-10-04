@@ -61,14 +61,18 @@ const drawingInfoInput = z
   .object({
     name: text,
     revision: text,
-    discipline: z.enum(["architecture", "structure", "formwork"]),
+    discipline: z.enum(["architecture", "structure"]),
   })
   .strict();
 async function assertDrawingUnused(drawing: Drawing) {
   const runs = await list<AnalysisRun>("run", drawing.projectId);
   if (
     runs.some((run) =>
-      [run.oldId, run.newId, run.formworkId].includes(drawing.id),
+      [
+        run.oldId,
+        run.newId,
+        (run as AnalysisRun & { formworkId?: string }).formworkId,
+      ].includes(drawing.id),
     )
   )
     throw new HttpError(
@@ -220,7 +224,7 @@ async function handler(
         const projectId = text.parse(form.get("projectId"));
         await projectFor(projectId);
         const discipline = z
-          .enum(["architecture", "structure", "formwork"])
+          .enum(["architecture", "structure"])
           .parse(form.get("discipline"));
         const revision = text.parse(form.get("revision"));
         const ext = file.name.split(".").pop()?.toLowerCase();
@@ -461,22 +465,48 @@ async function handler(
             projectId: text,
             oldId: text,
             newId: text,
-            formworkId: text,
           })
+          .strict()
           .parse(await readJson(request));
+        // Refresh legacy extractions before the transaction: DWG conversion can
+        // take longer than a MongoDB transaction. Original files are immutable.
+        const refreshedModels = new Map<string, Drawing["model"]>();
+        await projectFor(input.projectId);
+        for (const id of new Set([input.oldId, input.newId])) {
+          const drawing = await drawingFor(id);
+          if (drawing.projectId !== input.projectId)
+            throw new HttpError("All drawings must belong to this project.");
+          if (
+            drawing.status === "ready" &&
+            drawing.model &&
+            !drawing.model.measurements.length &&
+            (drawing.format === "DXF" || converterAvailable())
+          ) {
+            const original = await readOriginal(drawing);
+            const model = parseDxf(
+              drawing.format === "DXF"
+                ? original.toString("utf8")
+                : await convertDwg(original),
+            );
+            refreshedModels.set(id, model);
+          }
+        }
         const result = await transaction(async () => {
-          for (const id of new Set([
-            input.oldId,
-            input.newId,
-            input.formworkId,
-          ]))
+          for (const id of new Set([input.oldId, input.newId]))
             await lockDrawing(id);
           const project = await projectFor(input.projectId);
+          const previous = await drawingFor(input.oldId);
+          const latest = await drawingFor(input.newId);
           const result = analyze(
             project,
-            await drawingFor(input.oldId),
-            await drawingFor(input.newId),
-            await drawingFor(input.formworkId),
+            {
+              ...previous,
+              model: refreshedModels.get(previous.id) ?? previous.model,
+            },
+            {
+              ...latest,
+              model: refreshedModels.get(latest.id) ?? latest.model,
+            },
             user.name,
           );
           await save("run", result.run);
@@ -569,9 +599,9 @@ async function handler(
           format = request.nextUrl.searchParams.get("format") ?? "html";
         if (format !== "csv" && format !== "html")
           throw new HttpError("Unsupported report format.");
-        const runs = (await list<AnalysisRun>("run", project.id)).sort((a, b) =>
-          b.createdAt.localeCompare(a.createdAt),
-        );
+        const runs = (await list<AnalysisRun>("run", project.id))
+          .filter((run) => !("formworkId" in run))
+          .sort((a, b) => b.createdAt.localeCompare(a.createdAt));
         const runId = request.nextUrl.searchParams.get("runId"),
           run = runId ? runs.find((r) => r.id === runId) : runs[0];
         if (!run)
@@ -589,7 +619,7 @@ async function handler(
           return new NextResponse(issueCsv(issues), {
             headers: {
               "Content-Type": "text/csv; charset=utf-8",
-              "Content-Disposition": `attachment; filename="formiq-review.csv"`,
+              "Content-Disposition": `attachment; filename="kumkang-kind-aitech-review.csv"`,
               "Cache-Control": "private, no-store",
             },
           });
@@ -645,7 +675,7 @@ async function handler(
         { status: 409 },
       );
     console.error(
-      "[FORMIQ API] Request failed",
+      "[Kumkang Kind Ai'Tech API] Request failed",
       e instanceof Error ? e.name : "Unknown",
     );
     return NextResponse.json(

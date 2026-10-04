@@ -1,7 +1,8 @@
 "use client";
-import { useMemo, useState, useRef, useId, memo } from "react";
+import { useMemo, useState, useRef, useId, useEffect, memo } from "react";
 import { ZoomIn, ZoomOut, Maximize, Layers3, Crosshair } from "lucide-react";
 import type { CadEntity, Drawing, Issue } from "@/lib/types";
+import { findingMarkers } from "@/lib/finding-markers";
 import { arcPath } from "@/lib/geometry";
 const Entity = memo(function Entity({
   entity: e,
@@ -57,12 +58,34 @@ export default function CadViewer({
   compact?: boolean;
 }) {
   const [mode, setMode] = useState<"current" | "previous" | "overlay">(
-      "current",
+      previous?.model ? "overlay" : "current",
     ),
     [zoom, setZoom] = useState(1),
     [offset, setOffset] = useState({ x: 0, y: 0 }),
     [layerPanel, setLayerPanel] = useState(false),
-    [hidden, setHidden] = useState<string[]>([]);
+    [hidden, setHidden] = useState<string[]>([]),
+    [showFindings, setShowFindings] = useState(true),
+    [size, setSize] = useState({ width: 900, height: 600 });
+  const canvasRef = useRef<SVGSVGElement>(null);
+  useEffect(() => {
+    const element = canvasRef.current;
+    if (!element) return;
+    const observer = new ResizeObserver(([entry]) => {
+      if (entry.contentRect.width && entry.contentRect.height)
+        setSize({
+          width: entry.contentRect.width,
+          height: entry.contentRect.height,
+        });
+    });
+    observer.observe(element);
+    return () => observer.disconnect();
+  }, [current?.id, previous?.id]);
+  useEffect(() => {
+    if (selected?.rule === "GEO-02") setMode("previous");
+    else if (selected?.rule === "GEO-01") setMode("current");
+    else if (selected?.rule === "GEO-03") setMode("overlay");
+    if (selected) setShowFindings(true);
+  }, [selected?.id]);
   const drag = useRef<{ x: number; y: number; ox: number; oy: number } | null>(
     null,
   );
@@ -90,7 +113,7 @@ export default function CadViewer({
     pad = span * 0.1,
     w = bounds.maxX - bounds.minX + pad * 2,
     h = bounds.maxY - bounds.minY + pad * 2;
-  const center = selected?.point ?? {
+  const center = {
     x: (bounds.minX + bounds.maxX) / 2,
     y: (bounds.minY + bounds.maxY) / 2,
   };
@@ -98,6 +121,28 @@ export default function CadViewer({
   const reset = () => {
     setZoom(1);
     setOffset({ x: 0, y: 0 });
+  };
+  const unitsPerPixel = Math.max(w / zoom / size.width, h / zoom / size.height);
+  const markers = useMemo(
+    () =>
+      findingMarkers(
+        showFindings
+          ? issues.filter(
+              (i) =>
+                i.status !== "rejected" &&
+                !(mode === "current" && i.rule === "GEO-02") &&
+                !(mode === "previous" && i.rule === "GEO-01") &&
+                (!i.geometry || !hiddenLayers.has(i.geometry.layer)),
+            )
+          : [],
+        unitsPerPixel,
+        selected?.id,
+      ),
+    [issues, showFindings, mode, hiddenLayers, unitsPerPixel, selected?.id],
+  );
+  const focus = (point: { x: number; y: number }, nextZoom: number) => {
+    setZoom(nextZoom);
+    setOffset({ x: point.x - center.x, y: center.y - point.y });
   };
   const geometry = useMemo(
     () =>
@@ -160,20 +205,30 @@ export default function CadViewer({
               </button>
             ))}
         </div>
-        <button
-          className="icon-button"
-          aria-label="Toggle drawing layers"
-          onClick={() => setLayerPanel(!layerPanel)}
-        >
-          <Layers3 size={16} />
-        </button>
+        <div className="viewer-actions">
+          <button
+            className="button small"
+            aria-pressed={showFindings}
+            onClick={() => setShowFindings((value) => !value)}
+          >
+            {showFindings ? "Hide findings" : "Show findings"}
+          </button>
+          <button
+            className="icon-button"
+            aria-label="Toggle drawing layers"
+            onClick={() => setLayerPanel(!layerPanel)}
+          >
+            <Layers3 size={16} />
+          </button>
+        </div>
       </div>
       <div className="canvas-wrap">
         <svg
           className="cad-canvas"
+          ref={canvasRef}
           viewBox={viewBox}
           role="img"
-          aria-label={`CAD drawing ${current?.name}. ${issues.length} findings marked.`}
+          aria-label={`CAD drawing ${current?.name}. ${markers.length} finding markers; nearby findings are clustered.`}
           onPointerDown={(e) => {
             if ((e.target as Element).closest("[data-marker]")) return;
             drag.current = {
@@ -223,44 +278,82 @@ export default function CadViewer({
           />
           {previousGeometry}
           {geometry}
-          {issues
-            .filter((i) => i.status !== "rejected")
-            .map((i) => (
+          {showFindings && selected?.geometry && (
+            <rect
+              x={selected.geometry.bounds.minX}
+              y={-selected.geometry.bounds.maxY}
+              width={Math.max(
+                selected.geometry.bounds.maxX - selected.geometry.bounds.minX,
+                unitsPerPixel * 4,
+              )}
+              height={Math.max(
+                selected.geometry.bounds.maxY - selected.geometry.bounds.minY,
+                unitsPerPixel * 4,
+              )}
+              fill="#f2a35c"
+              fillOpacity={0.13}
+              stroke="#b65a24"
+              strokeWidth={2 * unitsPerPixel}
+              strokeDasharray={`${6 * unitsPerPixel} ${4 * unitsPerPixel}`}
+              pointerEvents="none"
+            />
+          )}
+          {markers.map(({ point, issues: group }) => {
+            const issue = group[0],
+              clustered = group.length > 1;
+            const active = selected?.id === issue.id && !clustered;
+            const activate = () => {
+              if (clustered) focus(point, Math.min(zoom * 1.8, 8));
+              else onSelect?.(issue);
+            };
+            return (
               <g
-                key={i.id}
+                key={issue.id}
                 data-marker="true"
                 role="button"
                 tabIndex={0}
-                aria-label={`Issue ${i.number}: ${i.title}`}
-                onClick={() => onSelect?.(i)}
+                aria-label={
+                  clustered
+                    ? `${group.length} nearby findings. Zoom to inspect.`
+                    : `Issue ${issue.number}: ${issue.title}`
+                }
+                onClick={activate}
                 onKeyDown={(e) => {
                   if (e.key === "Enter" || e.key === " ") {
                     e.preventDefault();
-                    onSelect?.(i);
+                    activate();
                   }
                 }}
                 style={{ cursor: "pointer" }}
               >
+                <title>
+                  {clustered
+                    ? `${group.length} nearby findings — zoom in or choose one in the list`
+                    : issue.title}
+                </title>
                 <circle
-                  cx={i.point.x}
-                  cy={-i.point.y}
-                  r={span * 0.025}
-                  fill={selected?.id === i.id ? "#c96636" : "#fff3e8"}
-                  stroke="#c96636"
-                  strokeWidth={18}
+                  cx={point.x}
+                  cy={-point.y}
+                  r={unitsPerPixel * (clustered ? 17 : 13)}
+                  fill={active ? "#b65a24" : clustered ? "#0c7196" : "#fff3e8"}
+                  stroke={clustered ? "#ffffff" : "#b65a24"}
+                  strokeWidth={unitsPerPixel * 1.5}
                 />
                 <text
-                  x={i.point.x}
-                  y={-i.point.y + span * 0.007}
+                  x={point.x}
+                  y={-point.y}
+                  dy="0.35em"
                   textAnchor="middle"
-                  fontSize={span * 0.018}
-                  fill={selected?.id === i.id ? "#fff" : "#ad522b"}
+                  fontSize={unitsPerPixel * 11}
+                  fill={active || clustered ? "#ffffff" : "#934619"}
                   fontWeight={600}
+                  pointerEvents="none"
                 >
-                  {i.number}
+                  {clustered ? group.length : issue.number}
                 </text>
               </g>
-            ))}
+            );
+          })}
         </svg>
         {layerPanel && (
           <div className="layer-panel">
@@ -308,8 +401,20 @@ export default function CadViewer({
             <button
               aria-label="Focus selected issue"
               onClick={() => {
-                setZoom(2.5);
-                setOffset({ x: 0, y: 0 });
+                const area = selected.geometry?.bounds;
+                const nextZoom = area
+                  ? Math.min(
+                      8,
+                      Math.max(
+                        1,
+                        Math.min(
+                          w / Math.max(area.maxX - area.minX, 1),
+                          h / Math.max(area.maxY - area.minY, 1),
+                        ) / 1.5,
+                      ),
+                    )
+                  : 2.5;
+                focus(selected.point, nextZoom);
               }}
             >
               <Crosshair size={16} />
@@ -330,7 +435,10 @@ export default function CadViewer({
         <span>
           <i className="legend-dot" /> Review finding
         </span>
-        <span className="viewer-hint">Drag to pan · Use controls to zoom</span>
+        <span className="viewer-hint">
+          Drag to pan · Blue markers group nearby findings · Zoom or use the
+          list
+        </span>
       </div>
     </div>
   );
