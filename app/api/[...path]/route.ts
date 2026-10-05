@@ -34,6 +34,11 @@ import { analyze, RULES } from "@/lib/analysis";
 import { issueCsv, reportHtml } from "@/lib/reports";
 import { withOwner } from "@/lib/ownership";
 import { allowedWriteOrigin } from "@/lib/request-origin";
+import {
+  requestPasswordReset,
+  resetPassword,
+  RESET_MESSAGE,
+} from "@/lib/password-reset";
 import type {
   AnalysisRun,
   Drawing,
@@ -122,6 +127,39 @@ async function handler(
         );
       if (request.headers.get("sec-fetch-site") === "cross-site")
         throw new HttpError("Cross-site request rejected.", 403);
+    }
+    if (route === "auth/forgot-password" && method === "POST") {
+      const input = z
+        .object({ email: z.string().trim().email().max(160) })
+        .strict()
+        .parse(await readJson(request));
+      await requestPasswordReset(input.email);
+      return NextResponse.json(
+        { message: RESET_MESSAGE },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+    }
+    if (route === "auth/reset-password" && method === "POST") {
+      const input = z
+        .object({
+          token: z.string().regex(/^[a-f0-9]{64}$/),
+          password: z.string().min(10).max(200),
+        })
+        .strict()
+        .parse(await readJson(request));
+      await resetPassword(input.token, input.password);
+      const response = NextResponse.json(
+        { message: "Password updated. Sign in with your new password." },
+        { headers: { "Cache-Control": "no-store" } },
+      );
+      response.cookies.set(SESSION_COOKIE, "", {
+        httpOnly: true,
+        sameSite: "lax",
+        secure: secureCookie(),
+        path: "/",
+        maxAge: 0,
+      });
+      return response;
     }
     if (
       (route === "auth/login" || route === "auth/register") &&

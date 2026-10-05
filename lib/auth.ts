@@ -104,6 +104,12 @@ export async function login(
   if (!user || !timingSafeEqual(hash, Buffer.from(user.hash, "hex"))) {
     return;
   }
+  // A password reset may have completed while scrypt was running.
+  if (
+    db().prepare("SELECT salt FROM users WHERE id=?").get(user.id)?.salt !==
+    user.salt
+  )
+    return;
   db().prepare("DELETE FROM login_attempts WHERE key=?").run(key);
   db().prepare("DELETE FROM sessions WHERE expires<=?").run(now);
   const token = randomBytes(32).toString("hex");

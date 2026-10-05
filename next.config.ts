@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 const config: NextConfig = {
-  serverExternalPackages: ["node:sqlite", "mongodb"],
+  serverExternalPackages: ["node:sqlite", "mongodb", "nodemailer"],
   poweredByHeader: false,
   output: "standalone",
   // Keep browser-test build artifacts separate from the application server.

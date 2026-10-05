@@ -54,6 +54,10 @@ export async function initializeMongo() {
         db
           .collection("login_attempts")
           .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+        db
+          .collection("password_resets")
+          .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
+        db.collection("password_resets").createIndex({ userId: 1 }),
       ]);
       // The earlier single-workspace index must allow the same code in different accounts.
       await db

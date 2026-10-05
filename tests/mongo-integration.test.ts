@@ -5,6 +5,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { NextRequest } from "next/server";
 import { GET, POST, PATCH } from "../app/api/[...path]/route";
+import { smtpMailer } from "../lib/mail";
 import {
   closeMongo,
   mongoDatabase,
@@ -278,6 +279,78 @@ test(
       );
       assert.equal((await call("auth/logout", "POST", {})).status, 200);
       assert.equal((await call("workspace")).status, 401);
+      // Verify the public reset flow against MongoDB using mocked email delivery.
+      const originalCreateTransport = smtpMailer.createTransport;
+      let resetToken = "";
+      process.env.SMTP_HOST = "smtp.example.com";
+      process.env.SMTP_PORT = "587";
+      process.env.SMTP_SECURE = "false";
+      process.env.SMTP_USER = "reset@example.com";
+      process.env.SMTP_PASSWORD = "test-only-password";
+      process.env.PASSWORD_RESET_FROM = "reset@example.com";
+      process.env.FORMIQ_APP_URL = "https://workspace.example.com";
+      smtpMailer.createTransport = () => ({
+        async sendMail(message) {
+          resetToken = message.text.match(/#token=([a-f0-9]{64})/)![1];
+          return { messageId: "test-email" };
+        },
+      });
+      try {
+        const oldLogin = await call("auth/login", "POST", {
+          email: "owner@example.com",
+          password: "Integration-test-password",
+        });
+        assert.equal(oldLogin.status, 200);
+        cookie = oldLogin.headers.get("set-cookie")!.split(";")[0];
+        assert.equal(
+          (
+            await call("auth/forgot-password", "POST", {
+              email: "owner@example.com",
+            })
+          ).status,
+          200,
+        );
+        assert.equal(
+          (
+            await call("auth/reset-password", "POST", {
+              token: resetToken,
+              password: "Reset-integration-password",
+            })
+          ).status,
+          200,
+        );
+        assert.equal((await call("workspace")).status, 401);
+        assert.equal(
+          (
+            await call("auth/reset-password", "POST", {
+              token: resetToken,
+              password: "Reuse-integration-password",
+            })
+          ).status,
+          400,
+        );
+        assert.equal(
+          (
+            await call("auth/login", "POST", {
+              email: "owner@example.com",
+              password: "Integration-test-password",
+            })
+          ).status,
+          401,
+        );
+        const newLogin = await call("auth/login", "POST", {
+          email: "owner@example.com",
+          password: "Reset-integration-password",
+        });
+        assert.equal(newLogin.status, 200);
+        cookie = newLogin.headers.get("set-cookie")!.split(";")[0];
+        const retained = await (await call("workspace")).json();
+        assert.ok(
+          retained.projects.some((p: { id: string }) => p.id === project.id),
+        );
+      } finally {
+        smtpMailer.createTransport = originalCreateTransport;
+      }
     } finally {
       if (connected) await (await mongoDatabase()).dropDatabase();
       await closeMongo();
