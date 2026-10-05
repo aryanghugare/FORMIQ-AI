@@ -2,7 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { parseDxf } from "../lib/cad";
 import { demoDxf } from "../lib/demo";
-import { analyze } from "../lib/analysis";
+import { analyze, RULES } from "../lib/analysis";
 import { issueCsv, reportHtml, cadSvg } from "../lib/reports";
 import type { Drawing, Project } from "../lib/types";
 const project: Project = {
@@ -40,7 +40,7 @@ test("presentation D14 discrepancy is computed from real DXF entities", () => {
     1000,
   );
   const result = analyze(project, old, latest, "Tester");
-  assert.equal(result.issues.length, 4);
+  assert.equal(result.issues.filter((i) => i.category === "dimension").length, 4);
   const mismatch = result.issues.find(
     (i) => i.tag === "D14" && i.rule === "REV-01",
   );
@@ -58,8 +58,8 @@ test("Structure revisions compare directly; mixed disciplines are rejected", () 
   const old = { ...drawing("old"), discipline: "structure" as const };
   const latest = { ...drawing("new"), discipline: "structure" as const };
   const result = analyze(project, old, latest, "Tester");
-  assert.equal(result.issues.length, 4);
-  assert.equal(result.run.checks, 5);
+  assert.equal(result.issues.filter((i) => i.category === "dimension").length, 4);
+  assert.equal(result.run.checks, RULES.length);
   assert.ok(result.issues.every((issue) => issue.drawingIds.length === 2));
   assert.equal("formworkId" in result.run, false);
   assert.throws(
@@ -88,7 +88,7 @@ test("tolerance suppresses numerical findings without concealing new tags", () =
     "Tester",
   );
   assert.deepEqual(
-    result.issues.map((i) => i.rule),
+    result.issues.filter((i) => i.category === "dimension").map((i) => i.rule),
     ["REV-02"],
   );
 });
@@ -227,7 +227,7 @@ test("dimension tolerance handles floating-point boundaries consistently", () =>
       { ...project, tolerance: 0.1 },
       ...(ds as [Drawing, Drawing]),
       "Tester",
-    ).issues.length,
+    ).issues.filter((i) => i.category === "dimension").length,
     0,
   );
 });
@@ -284,7 +284,7 @@ test("ordinary untagged dimensions compare by reference and direction", () => {
   );
 });
 
-test("geometry-only revisions produce honest added/removed findings", () => {
+test("geometry-only revisions produce honest geometry findings", () => {
   const line = (length: number) =>
     fixture(`0\nLINE\n8\nWALLS\n10\n0\n20\n0\n11\n${length}\n21\n0\n`);
   const previous = { ...drawing("old"), model: parseDxf(line(900)) };
@@ -292,8 +292,9 @@ test("geometry-only revisions produce honest added/removed findings", () => {
   const result = analyze(project, previous, latest, "Tester");
   assert.deepEqual(
     result.issues.map((i) => i.rule),
-    ["GEO-02", "GEO-01"],
+    ["GEO-04"],
   );
+  assert.equal(result.issues[0].evidence?.delta?.length, 100);
   assert.ok(
     result.issues.every(
       (i) => i.previous === undefined && i.current === undefined,

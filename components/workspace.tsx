@@ -51,6 +51,7 @@ import {
   formatDate as date,
   formatTimestamp,
   formatNumber,
+  deltaText,
 } from "@/lib/format";
 type View =
   | "overview"
@@ -447,7 +448,7 @@ export default function Workspace({
                 </td>
                 <td>
                   <div className="measurement-cell">
-                    {i.rule.startsWith("GEO-") ? (
+                    {i.geometry || i.rule.startsWith("GEO-") ? (
                       <strong>
                         {i.geometry
                           ? `${i.geometry.added} added · ${i.geometry.removed} removed`
@@ -1315,8 +1316,7 @@ export default function Workspace({
                       </div>
                       <DrawingComparison
                         key={`${projectId}-${run.id}`}
-                        current={latest}
-                        previous={previous}
+                        run={run}
                         issues={issues}
                         selected={selectedCurrent}
                         onSelect={setSelected}
@@ -2735,6 +2735,7 @@ function IssueDrawer({
               {i.severity} priority
             </Pill>
             <Pill>{i.rule}</Pill>
+            {i.category && <Pill>{i.category}</Pill>}
           </div>
           <h2>{i.title}</h2>
           <p className="drawer-description">{i.description}</p>
@@ -2742,7 +2743,7 @@ function IssueDrawer({
             <div>
               <span>PREVIOUS</span>
               <strong>
-                {i.rule.startsWith("GEO-")
+                {i.geometry || i.rule.startsWith("GEO-")
                   ? i.geometry
                     ? `${i.geometry.removed} removed`
                     : i.rule === "GEO-02"
@@ -2755,7 +2756,7 @@ function IssueDrawer({
             <div>
               <span>LATEST</span>
               <strong>
-                {i.rule.startsWith("GEO-")
+                {i.geometry || i.rule.startsWith("GEO-")
                   ? i.geometry
                     ? `${i.geometry.added} added`
                     : i.rule === "GEO-01"
@@ -2765,6 +2766,63 @@ function IssueDrawer({
               </strong>
             </div>
           </div>
+          {i.evidence && (
+            <section className="finding-evidence">
+              <h3>Evidence</h3>
+              <p>{i.evidence.basis}</p>
+              <dl>
+                <dt>Confidence</dt>
+                <dd>
+                  {i.evidence.confidence} <small>(heuristic, not a probability)</small>
+                </dd>
+                <dt>Tolerance</dt>
+                <dd>{i.evidence.tolerance} mm</dd>
+                {deltaText(i) && (
+                  <>
+                    <dt>Change</dt>
+                    <dd>{deltaText(i)}</dd>
+                  </>
+                )}
+                {i.evidence.view && (
+                  <>
+                    <dt>View</dt>
+                    <dd>{i.evidence.view}</dd>
+                  </>
+                )}
+                {(i.evidence.previousHandles?.length ||
+                  i.evidence.latestHandles?.length) ? (
+                  <>
+                    <dt>CAD handles</dt>
+                    <dd>
+                      {[
+                        i.evidence.previousHandles?.length &&
+                          `previous ${i.evidence.previousHandles.slice(0, 8).join(", ")}`,
+                        i.evidence.latestHandles?.length &&
+                          `latest ${i.evidence.latestHandles.slice(0, 8).join(", ")}`,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+                    </dd>
+                  </>
+                ) : null}
+                {i.evidence.items && (
+                  <>
+                    <dt>Grouped changes</dt>
+                    <dd>
+                      {i.evidence.items.length +
+                        (i.evidence.omittedItems ?? 0)}{" "}
+                      — step through them on the canvas
+                    </dd>
+                  </>
+                )}
+              </dl>
+              {i.evidence.warnings?.map((w) => (
+                <p key={w} className="evidence-warning">
+                  <TriangleAlert size={12} /> {w}
+                </p>
+              ))}
+            </section>
+          )}
           <section>
             <h3>Potential impact</h3>
             <div className="impact-list">

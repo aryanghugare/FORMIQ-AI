@@ -54,10 +54,6 @@ export async function initializeMongo() {
         db
           .collection("login_attempts")
           .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-        db
-          .collection("password_resets")
-          .createIndex({ expiresAt: 1 }, { expireAfterSeconds: 0 }),
-        db.collection("password_resets").createIndex({ userId: 1 }),
       ]);
       // The earlier single-workspace index must allow the same code in different accounts.
       await db
@@ -187,7 +183,7 @@ export async function mongoGet<T>(
     .findOne({ _id: id, kind, ownerId: ownerId() }, mongoOptions());
   if (!row) return;
   const data = row.data;
-  if (kind === "drawing" && row.modelFileId)
+  if ((kind === "drawing" || kind === "snapshot") && row.modelFileId)
     data.model = JSON.parse(
       (await downloadMongoFile(row.modelFileId)).toString(),
     );
@@ -215,7 +211,7 @@ export async function mongoList<T>(
     .toArray();
   const result: T[] = [];
   for (const row of rows) {
-    if (kind === "drawing" && row.modelFileId && !summaries)
+    if ((kind === "drawing" || kind === "snapshot") && row.modelFileId && !summaries)
       row.data.model = JSON.parse(
         (await downloadMongoFile(row.modelFileId)).toString(),
       );

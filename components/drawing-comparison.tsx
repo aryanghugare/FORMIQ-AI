@@ -1,58 +1,49 @@
 "use client";
 import { useEffect, useState } from "react";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
-import type { Drawing, Issue } from "@/lib/types";
+import type { AnalysisRun, Drawing, Issue } from "@/lib/types";
 import CadViewer from "./cad-viewer";
-/** Load only the two drawings displayed in the canvas, not every uploaded model. */
+/** Load the exact models the analysis compared, not every uploaded model. */
 export default function DrawingComparison({
-  current,
-  previous,
+  run,
   issues,
   selected,
   onSelect,
 }: {
-  current?: Drawing;
-  previous?: Drawing;
+  run: AnalysisRun;
   issues: Issue[];
   selected?: Issue;
   onSelect: (issue: Issue) => void;
 }) {
-  const [loaded, setLoaded] = useState<Drawing[]>([]),
+  const [loaded, setLoaded] = useState<{
+      legacy: boolean;
+      previous: Drawing;
+      latest: Drawing;
+    }>(),
     [error, setError] = useState(""),
     [retry, setRetry] = useState(0);
-  const currentId = current?.id,
-    previousId = previous?.id;
   useEffect(() => {
     const controller = new AbortController();
     setError("");
-    setLoaded([]);
-    Promise.all(
-      [currentId, previousId]
-        .filter((id): id is string => Boolean(id))
-        .map(async (id) => {
-          const response = await fetch(
-            `/api/drawings/${encodeURIComponent(id)}`,
-            { signal: controller.signal, cache: "no-store" },
-          );
-          const data = await response.json();
-          if (!response.ok)
-            throw new Error(data.error ?? "Drawing could not be loaded.");
-          return data as Drawing;
-        }),
-    )
-      .then((drawings) => {
-        if (!controller.signal.aborted) setLoaded(drawings);
+    setLoaded(undefined);
+    fetch(`/api/runs/${encodeURIComponent(run.id)}/models`, {
+      signal: controller.signal,
+      cache: "no-store",
+    })
+      .then(async (response) => {
+        const data = await response.json();
+        if (!response.ok)
+          throw new Error(data.error ?? "Drawings could not be loaded.");
+        if (!controller.signal.aborted) setLoaded(data);
       })
       .catch((e) => {
         if (!controller.signal.aborted)
           setError(
-            e instanceof Error ? e.message : "Drawing could not be loaded.",
+            e instanceof Error ? e.message : "Drawings could not be loaded.",
           );
       });
     return () => controller.abort();
-  }, [currentId, previousId, retry]);
-  const latest = loaded.find((d) => d.id === currentId),
-    old = loaded.find((d) => d.id === previousId);
+  }, [run.id, retry]);
   if (error)
     return (
       <div className="viewer-empty" role="alert">
@@ -63,7 +54,7 @@ export default function DrawingComparison({
         </button>
       </div>
     );
-  if (currentId && !latest)
+  if (!loaded)
     return (
       <div className="viewer-empty" role="status">
         <LoaderCircle className="spin" size={25} />
@@ -72,11 +63,14 @@ export default function DrawingComparison({
     );
   return (
     <CadViewer
-      current={latest}
-      previous={old}
+      current={loaded.latest}
+      previous={loaded.previous}
       issues={issues}
       selected={selected}
       onSelect={onSelect}
+      alignment={run.alignment}
+      tolerance={run.config?.geometryTolerance ?? Math.max(run.tolerance, 0.001)}
+      legacy={loaded.legacy}
     />
   );
 }

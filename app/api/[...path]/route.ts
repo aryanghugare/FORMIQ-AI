@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { randomUUID } from "node:crypto";
+import { createHash, randomUUID } from "node:crypto";
 import { z } from "zod";
 import {
   audit,
@@ -13,6 +13,7 @@ import {
   readOriginal,
   removeOriginal,
   lockDrawing,
+  prepareSnapshot,
   updateDrawingInfo,
   removeDrawingRecord,
   removeDrawingFiles,
@@ -25,26 +26,27 @@ import {
   SESSION_COOKIE,
   secureCookie,
 } from "@/lib/auth";
-import { convertDwg, converterAvailable } from "@/lib/converter";
+import {
+  convertDwg,
+  converterAvailable,
+  converterDescription,
+} from "@/lib/converter";
 import { HttpError } from "@/lib/errors";
 import { readJson, readMultipart } from "@/lib/request-body";
-import { parseDxf } from "@/lib/cad";
+import { parseDxf, PARSER_VERSION } from "@/lib/cad";
 import { loadWorkspace } from "@/lib/workspace";
 import { analyze, RULES } from "@/lib/analysis";
 import { issueCsv, reportHtml } from "@/lib/reports";
 import { withOwner } from "@/lib/ownership";
 import { allowedWriteOrigin } from "@/lib/request-origin";
-import {
-  requestPasswordReset,
-  resetPassword,
-  RESET_MESSAGE,
-} from "@/lib/password-reset";
 import type {
   AnalysisRun,
   Drawing,
   Issue,
   MemoryCase,
+  ModelSnapshot,
   Project,
+  RunSource,
 } from "@/lib/types";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -97,6 +99,35 @@ const drawingFor = async (id: string) => {
   if (!d) throw new HttpError("Drawing not found.", 404);
   return d;
 };
+const sha256 = (data: Buffer | string) =>
+  createHash("sha256").update(data).digest("hex");
+/** The exact models an analysis compared; runs before provenance tracking fall back to drawing models. */
+async function runModels(run: AnalysisRun) {
+  const side = async (role: RunSource["role"], id: string) => {
+    const source = run.sources?.find((s) => s.role === role);
+    const drawing = await get<Drawing>("drawing", source?.drawingId ?? id);
+    if (!drawing) throw new HttpError("A source drawing of this analysis is missing.", 404);
+    const model = source?.snapshotId
+      ? (await get<ModelSnapshot>("snapshot", source.snapshotId))?.model
+      : drawing.model;
+    if (!model) throw new HttpError("The model used by this analysis is unavailable.", 404);
+    if (source && sha256(JSON.stringify(model)) !== source.modelSha256)
+      throw new HttpError("The stored model no longer matches this analysis. Run a new analysis to use the current extraction.", 409);
+    return { ...drawing, name: source?.name ?? drawing.name, revision: source?.revision ?? drawing.revision, model };
+  };
+  return {
+    runId: run.id,
+    legacy: !run.sources,
+    previous: await side("previous", run.oldId),
+    latest: await side("latest", run.newId),
+  };
+}
+async function extract(format: Drawing["format"], buffer: Buffer) {
+  if (format === "DXF") return parseDxf(buffer.toString("utf8"));
+  const model = parseDxf(await convertDwg(buffer));
+  model.converter = await converterDescription();
+  return model;
+}
 async function handler(
   request: NextRequest,
   { params }: { params: Promise<{ path: string[] }> },
@@ -127,39 +158,6 @@ async function handler(
         );
       if (request.headers.get("sec-fetch-site") === "cross-site")
         throw new HttpError("Cross-site request rejected.", 403);
-    }
-    if (route === "auth/forgot-password" && method === "POST") {
-      const input = z
-        .object({ email: z.string().trim().email().max(160) })
-        .strict()
-        .parse(await readJson(request));
-      await requestPasswordReset(input.email);
-      return NextResponse.json(
-        { message: RESET_MESSAGE },
-        { headers: { "Cache-Control": "no-store" } },
-      );
-    }
-    if (route === "auth/reset-password" && method === "POST") {
-      const input = z
-        .object({
-          token: z.string().regex(/^[a-f0-9]{64}$/),
-          password: z.string().min(10).max(200),
-        })
-        .strict()
-        .parse(await readJson(request));
-      await resetPassword(input.token, input.password);
-      const response = NextResponse.json(
-        { message: "Password updated. Sign in with your new password." },
-        { headers: { "Cache-Control": "no-store" } },
-      );
-      response.cookies.set(SESSION_COOKIE, "", {
-        httpOnly: true,
-        sameSite: "lax",
-        secure: secureCookie(),
-        path: "/",
-        maxAge: 0,
-      });
-      return response;
     }
     if (
       (route === "auth/login" || route === "auth/register") &&
@@ -287,6 +285,7 @@ async function handler(
           uploadedAt: new Date().toISOString(),
           uploadedBy: user.name,
           status: "ready",
+          sha256: sha256(buffer),
         };
         if (ext === "dwg" && !converterAvailable()) {
           drawing.status = "needs_conversion";
@@ -294,11 +293,7 @@ async function handler(
             "DWG saved. Start the Docker app with DWG conversion, then click Retry; or install a local converter.";
         } else {
           try {
-            drawing.model = parseDxf(
-              ext === "dxf"
-                ? buffer.toString("utf8")
-                : await convertDwg(buffer),
-            );
+            drawing.model = await extract(drawing.format, buffer);
           } catch (e) {
             drawing.status = "failed";
             drawing.error =
@@ -430,7 +425,7 @@ async function handler(
           let model: Drawing["model"];
           try {
             const buffer = await readOriginal(drawing);
-            model = parseDxf(await convertDwg(buffer));
+            model = await extract("DWG", buffer);
           } catch (error) {
             const message =
               error instanceof Error ? error.message : "CAD processing failed.";
@@ -506,58 +501,134 @@ async function handler(
           })
           .strict()
           .parse(await readJson(request));
-        // Refresh legacy extractions before the transaction: DWG conversion can
-        // take longer than a MongoDB transaction. Original files are immutable.
-        const refreshedModels = new Map<string, Drawing["model"]>();
+        // Re-extract models from an older parser before the transaction: DWG
+        // conversion can outlast a MongoDB transaction. Originals are immutable;
+        // the drawing record is left untouched and the run keeps its own snapshot.
         await projectFor(input.projectId);
+        const runId = randomUUID();
+        const refreshed = new Map<string, Drawing["model"]>();
+        const hashes = new Map<string, string | undefined>();
+        const notes: string[] = [];
         for (const id of new Set([input.oldId, input.newId])) {
           const drawing = await drawingFor(id);
           if (drawing.projectId !== input.projectId)
             throw new HttpError("All drawings must belong to this project.");
-          if (
-            drawing.status === "ready" &&
-            drawing.model &&
-            !drawing.model.measurements.length &&
-            (drawing.format === "DXF" || converterAvailable())
-          ) {
-            const original = await readOriginal(drawing);
-            const model = parseDxf(
-              drawing.format === "DXF"
-                ? original.toString("utf8")
-                : await convertDwg(original),
+          if (drawing.status !== "ready" || !drawing.model) continue;
+          const original = await readOriginal(drawing).catch(() => undefined);
+          hashes.set(id, original ? sha256(original) : drawing.sha256);
+          if (drawing.sha256 && original && hashes.get(id) !== drawing.sha256)
+            throw new HttpError(
+              `${drawing.name} no longer matches the file recorded at upload. Upload it again as a new revision.`,
+              409,
             );
-            refreshedModels.set(id, model);
+          if (drawing.model.parserVersion === PARSER_VERSION) continue;
+          if (!original || (drawing.format === "DWG" && !converterAvailable())) {
+            notes.push(
+              `${drawing.name} was extracted by an earlier parser and could not be re-extracted ${original ? "because no DWG converter is available" : "because its original file is unavailable"}; its stored model was compared and may lack curved polyline segments, handles and dimension reference points.`,
+            );
+            continue;
+          }
+          try {
+            refreshed.set(id, await extract(drawing.format, original));
+          } catch (error) {
+            notes.push(
+              `${drawing.name} could not be re-extracted (${error instanceof Error ? error.message : "processing failed"}); its stored model from an earlier parser was compared.`,
+            );
           }
         }
-        const result = await transaction(async () => {
-          for (const id of new Set([input.oldId, input.newId]))
-            await lockDrawing(id);
-          const project = await projectFor(input.projectId);
-          const previous = await drawingFor(input.oldId);
-          const latest = await drawingFor(input.newId);
-          const result = analyze(
-            project,
-            {
-              ...previous,
-              model: refreshedModels.get(previous.id) ?? previous.model,
-            },
-            {
-              ...latest,
-              model: refreshedModels.get(latest.id) ?? latest.model,
-            },
-            user.name,
-          );
-          await save("run", result.run);
-          for (const issue of result.issues) await save("issue", issue);
-          await audit(
-            project.id,
-            user.name,
-            "Analysis completed",
-            `${result.issues.length} findings across ${result.run.checks} checks.`,
-          );
-          return result;
+        const snapshotModels = new Map(refreshed);
+        for (const id of new Set([input.oldId, input.newId])) {
+          if (!snapshotModels.has(id)) snapshotModels.set(id, (await drawingFor(id)).model);
+        }
+        const snapshots = new Map<string, Awaited<ReturnType<typeof prepareSnapshot>> & { id: string }>();
+        try {
+          for (const [drawingId, model] of snapshotModels) {
+            if (!model) continue;
+            const snapshot: ModelSnapshot = {
+              id: randomUUID(),
+              projectId: input.projectId,
+              runId,
+              drawingId,
+              model: model!,
+            };
+            snapshots.set(drawingId, {
+              id: snapshot.id,
+              ...(await prepareSnapshot(snapshot)),
+            });
+          }
+        } catch (error) {
+          for (const s of snapshots.values()) await s.discard();
+          throw error;
+        }
+        try {
+          const result = await transaction(async () => {
+            for (const id of new Set([input.oldId, input.newId]))
+              await lockDrawing(id);
+            const project = await projectFor(input.projectId);
+            const previous = await drawingFor(input.oldId);
+            const latest = await drawingFor(input.newId);
+            const source = (drawing: Drawing, role: RunSource["role"]): RunSource => {
+              const model = snapshotModels.get(drawing.id) ?? drawing.model;
+              const snapshot = snapshots.get(drawing.id);
+              return {
+                drawingId: drawing.id,
+                role,
+                name: drawing.name,
+                revision: drawing.revision,
+                ...(hashes.get(drawing.id) ? { sha256: hashes.get(drawing.id) } : {}),
+                modelSha256: model ? sha256(JSON.stringify(model)) : "",
+                ...(model?.parserVersion ? { parserVersion: model.parserVersion } : {}),
+                ...(model?.converter ? { converter: model.converter } : {}),
+                model: snapshot ? "snapshot" : "drawing",
+                ...(snapshot ? { snapshotId: snapshot.id } : {}),
+                reextracted: refreshed.has(drawing.id),
+              };
+            };
+            const result = analyze(
+              project,
+              { ...previous, model: snapshotModels.get(previous.id) ?? previous.model },
+              { ...latest, model: snapshotModels.get(latest.id) ?? latest.model },
+              user.name,
+              {
+                runId,
+                warnings: notes,
+                sources: [source(previous, "previous"), source(latest, "latest")],
+              },
+            );
+            for (const s of snapshots.values()) await s.save();
+            await save("run", result.run);
+            for (const issue of result.issues) await save("issue", issue);
+            await audit(
+              project.id,
+              user.name,
+              "Analysis completed",
+              `${result.issues.length} findings across ${result.run.checks} checks.`,
+            );
+            return result;
+          });
+          return NextResponse.json(result, { status: 201 });
+        } catch (error) {
+          const uncertain =
+            error &&
+            typeof error === "object" &&
+            "hasErrorLabel" in error &&
+            typeof error.hasErrorLabel === "function" &&
+            error.hasErrorLabel("UnknownTransactionCommitResult");
+          if (!uncertain) for (const s of snapshots.values()) await s.discard();
+          throw error;
+        }
+      }
+      if (
+        path[0] === "runs" &&
+        path.length === 3 &&
+        path[2] === "models" &&
+        method === "GET"
+      ) {
+        const run = await get<AnalysisRun>("run", path[1]);
+        if (!run) throw new HttpError("Analysis not found.", 404);
+        return NextResponse.json(await runModels(run), {
+          headers: { "Cache-Control": "private, no-store" },
         });
-        return NextResponse.json(result, { status: 201 });
       }
       if (path[0] === "issues" && path.length === 2 && method === "PATCH") {
         const issue = await get<Issue>("issue", path[1]);
@@ -661,13 +732,9 @@ async function handler(
               "Cache-Control": "private, no-store",
             },
           });
+        const models = await runModels(run);
         return new NextResponse(
-          reportHtml(
-            project,
-            run,
-            await list<Drawing>("drawing", project.id),
-            issues,
-          ),
+          reportHtml(project, run, [models.previous, models.latest], issues),
           {
             headers: {
               "Content-Type": "text/html; charset=utf-8",

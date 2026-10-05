@@ -12,6 +12,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { NextRequest } from "next/server";
 import { demoDxf } from "../lib/demo";
+import { RULES } from "../lib/analysis";
 import { POST, GET, PATCH, DELETE } from "../app/api/[...path]/route";
 import { db, list } from "../lib/db";
 import type {
@@ -132,18 +133,31 @@ test("full authenticated API workflow persists CAD analysis and designer review"
   const { save: saveLegacy } = await import("../lib/db");
   saveLegacy("drawing", {
     ...drawings[0],
-    model: { ...drawings[0].model!, measurements: [] },
+    model: { ...drawings[0].model!, parserVersion: "legacy", measurements: [] },
   });
   const response = await call("analyze", "POST", input);
   assert.equal(response.status, 201);
   const result: { run: AnalysisRun; issues: Issue[] } = await response.json();
-  assert.equal(result.issues.length, 4);
+  assert.equal(result.issues.filter((i: Issue) => i.category === "dimension").length, 4);
   const issue = result.issues.find(
     (i) => i.tag === "D14" && i.rule === "REV-01",
   )!;
   assert.equal(issue.current, 1000);
   assert.equal(issue.previous, 900);
-  assert.equal(result.run.checks, 5);
+  assert.equal(result.run.checks, RULES.length);
+  const runModels = await call(`runs/${result.run.id}/models`);
+  assert.equal(runModels.status, 200);
+  const savedModels = await runModels.json();
+  assert.equal(savedModels.legacy, false);
+  assert.equal(savedModels.previous.model.measurements.find((m: { tag: string }) => m.tag === "D14").value, 900);
+  assert.ok(result.run.sources?.every((source) => source.model === "snapshot"));
+  // A future extraction update must not change the exact model used by a prior run.
+  const originalDrawing = drawings[1];
+  saveLegacy("drawing", { ...originalDrawing, model: { ...originalDrawing.model!, measurements: [] } });
+  const retainedModels = await (await call(`runs/${result.run.id}/models`)).json();
+  assert.deepEqual(retainedModels.latest.model, savedModels.latest.model);
+  saveLegacy("drawing", originalDrawing);
+
   const structureResponse = await upload(
     project.id,
     readFileSync(join("public/samples", samples.new), "utf8"),
@@ -168,8 +182,8 @@ test("full authenticated API workflow persists CAD analysis and designer review"
   });
   assert.equal(structureComparison.status, 201);
   const structureResult = await structureComparison.json();
-  assert.equal(structureResult.issues.length, 4);
-  assert.equal(structureResult.run.checks, 5);
+  assert.equal(structureResult.issues.filter((i: Issue) => i.category === "dimension").length, 4);
+  assert.equal(structureResult.run.checks, RULES.length);
   assert.ok(
     structureResult.issues.every(
       (finding: Issue) => finding.drawingIds.length === 2,
@@ -540,7 +554,7 @@ test("public sign-up, login and logout keep projects, CAD files and reviews priv
   });
   assert.equal(analysis.status, 201);
   const result = await analysis.json();
-  assert.equal(result.issues.length, 4);
+  assert.equal(result.issues.filter((i: Issue) => i.category === "dimension").length, 4);
   const memory = await call("memory", "POST", {
     title: "Alice's private reference",
     category: "Openings",
@@ -670,7 +684,7 @@ test("public sign-up, login and logout keep projects, CAD files and reviews priv
   );
   assert.equal(alice.drawings.length, 2);
   assert.equal(alice.memory.length, 1);
-  assert.equal(alice.issues.length, 4);
+  assert.equal(alice.issues.length, result.issues.length);
   assert.equal(
     (await call(`reports?projectId=${project.id}&format=csv`)).status,
     200,

@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import {
   ArrowRight,
   ShieldCheck,
@@ -12,11 +12,9 @@ import Link from "next/link";
 export default function Login({
   demo,
   signup = false,
-  reset,
 }: {
   demo: boolean;
   signup?: boolean;
-  reset?: "request" | "confirm";
 }) {
   const [email, setEmail] = useState(demo ? "designer@formiq.ai" : ""),
     [name, setName] = useState(""),
@@ -24,53 +22,19 @@ export default function Login({
     [showPassword, setShowPassword] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
-  const [token, setToken] = useState(""),
-    [confirmation, setConfirmation] = useState(""),
-    [message, setMessage] = useState("");
-  useEffect(() => {
-    if (reset !== "confirm") return;
-    const value =
-      new URLSearchParams(window.location.hash.slice(1)).get("token") ?? "";
-    if (/^[a-f0-9]{64}$/.test(value)) setToken(value);
-    else setError("This reset link is invalid. Request a new link.");
-  }, [reset]);
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setBusy(true);
     setError("");
     try {
-      if (reset === "confirm" && password !== confirmation)
-        throw new Error("The passwords do not match.");
-      const endpoint =
-        reset === "request"
-          ? "/api/auth/forgot-password"
-          : reset === "confirm"
-            ? "/api/auth/reset-password"
-            : signup
-              ? "/api/auth/register"
-              : "/api/auth/login";
+      const endpoint = signup ? "/api/auth/register" : "/api/auth/login";
       const r = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(
-          reset === "request"
-            ? { email }
-            : reset === "confirm"
-              ? { token, password }
-              : { email, password, ...(signup ? { name } : {}) },
-        ),
+        body: JSON.stringify({ email, password, ...(signup ? { name } : {}) }),
       });
       const data = await r.json();
       if (!r.ok) throw new Error(data.error);
-      if (reset) {
-        setMessage(data.message);
-        setBusy(false);
-        setPassword("");
-        setConfirmation("");
-        if (reset === "confirm")
-          window.history.replaceState(null, "", "/reset-password");
-        return;
-      }
       window.location.href = "/";
     } catch (e) {
       setError(e instanceof Error ? e.message : "Unable to sign in.");
@@ -133,25 +97,12 @@ export default function Login({
             <span className="status-dot" /> DESIGN WORKSPACE
           </span>
           <h2>
-            {reset === "request"
-              ? "Forgot your password?"
-              : reset === "confirm"
-                ? "Choose a new password."
-                : signup
-                  ? "Create your account."
-                  : "Welcome to Kumkang Kind Ai'Tech."}
+            {signup ? "Create your account." : "Welcome to Kumkang Kind Ai'Tech."}
           </h2>
           <p>
-            {reset === "request"
-              ? "Enter your account email to receive a password reset link."
-              : reset === "confirm"
-                ? "Use at least 10 characters for your new password."
-                : signup
-                  ? "Start your own design assurance workspace."
-                  : "Sign in to your design assurance workspace."}
+            {signup ? "Start your own design assurance workspace." : "Sign in to your design assurance workspace."}
           </p>
-          {!message && (
-            <>
+          <>
               {signup && (
                 <label>
                   Full name
@@ -166,7 +117,6 @@ export default function Login({
                   />
                 </label>
               )}
-              {reset !== "confirm" && (
                 <label>
                   Email address
                   <input
@@ -180,8 +130,7 @@ export default function Login({
                     placeholder="you@company.com"
                   />
                 </label>
-              )}
-              {reset !== "request" && (
+
                 <label>
                   Password
                   <span className="password-input">
@@ -189,17 +138,17 @@ export default function Login({
                       type={showPassword ? "text" : "password"}
                       name="password"
                       autoComplete={
-                        signup || reset === "confirm"
+                        signup
                           ? "new-password"
                           : "current-password"
                       }
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      minLength={signup || reset === "confirm" ? 10 : undefined}
+                      minLength={signup ? 10 : undefined}
                       maxLength={200}
                       placeholder={
-                        signup || reset === "confirm"
+                        signup
                           ? "At least 10 characters"
                           : undefined
                       }
@@ -218,78 +167,25 @@ export default function Login({
                     </button>
                   </span>
                 </label>
-              )}
-              {reset === "confirm" && (
-                <label>
-                  Confirm new password
-                  <input
-                    type={showPassword ? "text" : "password"}
-                    name="confirmation"
-                    autoComplete="new-password"
-                    value={confirmation}
-                    onChange={(e) => setConfirmation(e.target.value)}
-                    required
-                    minLength={10}
-                    maxLength={200}
-                  />
-                </label>
-              )}
-              {!signup && !reset && (
-                <p className="auth-switch">
-                  <Link href="/forgot-password">Forgot password?</Link>
-                </p>
-              )}
               {error && (
                 <div role="alert" className="alert error">
                   {error}
                 </div>
               )}
               <button
-                disabled={busy || (reset === "confirm" && !token)}
+                disabled={busy}
                 className="button primary full"
                 type="submit"
               >
-                {reset
-                  ? busy
-                    ? "Please wait…"
-                    : reset === "request"
-                      ? "Send reset link"
-                      : "Update password"
-                  : busy
-                    ? signup
-                      ? "Creating account…"
-                      : "Signing in…"
-                    : signup
-                      ? "Create account"
-                      : "Enter workspace"}
+                {busy ? signup ? "Creating account…" : "Signing in…" : signup ? "Create account" : "Enter workspace"}
                 <ArrowRight size={17} />
               </button>
-            </>
-          )}
-          {message && (
-            <div role="status" className="alert">
-              {message}
-            </div>
-          )}
+          </>
           <p className="auth-switch">
-            {reset
-              ? ""
-              : signup
-                ? "Already have an account? "
-                : "New to Kumkang Kind Ai'Tech? "}
-            <Link href={reset || signup ? "/login" : "/register"}>
-              {reset
-                ? "Back to sign in"
-                : signup
-                  ? "Sign in"
-                  : "Create an account"}
+            {signup ? "Already have an account? " : "New to Kumkang Kind Ai'Tech? "}
+            <Link href={signup ? "/login" : "/register"}>
+              {signup ? "Sign in" : "Create an account"}
             </Link>
-            {reset === "confirm" && !message && (
-              <>
-                {" "}
-                · <Link href="/forgot-password">Request a new reset link</Link>
-              </>
-            )}
           </p>
           {demo && (
             <div className="demo-login">

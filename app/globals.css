@@ -1501,6 +1501,73 @@ tbody tr:hover {
 .legend-line.old {
   background: #cea38d;
 }
+.legend-line.highlight {
+  background: linear-gradient(90deg, #c0392b 50%, #0b6fa4 50%);
+  height: 3px;
+}
+.finding-evidence p {
+  margin: 0 0 8px;
+  font-size: 12px;
+  line-height: 1.5;
+}
+.finding-evidence dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 4px 12px;
+  margin: 0 0 8px;
+  font-size: 12px;
+}
+.finding-evidence dt {
+  color: #6b8796;
+}
+.finding-evidence dd {
+  margin: 0;
+  overflow-wrap: anywhere;
+}
+.evidence-warning {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+  color: #8a5a1c;
+}
+.viewer-notice {
+  margin: 0;
+  padding: 7px 15px;
+  background: #fff7ec;
+  border-bottom: 1px solid #f1dcc2;
+  color: #8a5a1c;
+  font-size: 11px;
+}
+.item-navigator {
+  position: absolute;
+  top: 14px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 6px;
+  background: white;
+  border: 1px solid var(--line);
+  border-radius: 5px;
+  box-shadow: 0 2px 4px #1c3e4f14;
+  font-size: 11px;
+  color: #285a72;
+}
+.item-navigator button {
+  display: grid;
+  place-items: center;
+  width: 26px;
+  height: 26px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  border-radius: 4px;
+}
+.item-navigator button:hover {
+  background: #eef6fa;
+}
 .legend-dot {
   width: 5px;
   height: 5px;

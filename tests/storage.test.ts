@@ -14,9 +14,11 @@ after(() => {
 test("demo seed is deterministic and persists its parsed drawings and analysis", () => {
   assert.equal(list("project").length, 1);
   assert.equal(list("drawing").length, 2);
-  assert.equal(list("issue").length, 4);
+  const issues = list("issue");
+  assert.ok(issues.length >= 4);
+  assert.equal(issues.filter((i: any) => i.category === "dimension").length, 4);
   db();
-  assert.equal(list("issue").length, 4);
+  assert.deepEqual(list("issue"), issues);
 });
 test("failed transactions do not leave partial review records", () => {
   assert.throws(() =>

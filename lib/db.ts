@@ -25,7 +25,6 @@ export function db() {
     CREATE TABLE IF NOT EXISTS users (id TEXT PRIMARY KEY, name TEXT NOT NULL, email TEXT UNIQUE NOT NULL, salt TEXT NOT NULL, hash TEXT NOT NULL);
     CREATE TABLE IF NOT EXISTS sessions (token TEXT PRIMARY KEY, userId TEXT NOT NULL REFERENCES users(id), expires INTEGER NOT NULL);
     CREATE TABLE IF NOT EXISTS login_attempts (key TEXT PRIMARY KEY, count INTEGER NOT NULL, expires INTEGER NOT NULL);
-    CREATE TABLE IF NOT EXISTS password_resets (token TEXT PRIMARY KEY, userId TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE, credentialVersion TEXT NOT NULL, expires INTEGER NOT NULL);
   `);
     // Backfill metadata once for databases created before geometry was loaded on demand.
     instance.exec("BEGIN IMMEDIATE");

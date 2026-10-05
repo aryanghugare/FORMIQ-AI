@@ -16,7 +16,7 @@ import {
   deleteMongoFile,
   mongoOptions,
 } from "./mongo";
-import type { Drawing, AuditEvent } from "./types";
+import type { Drawing, AuditEvent, ModelSnapshot } from "./types";
 import { ownerId } from "./ownership";
 import { HttpError } from "./errors";
 import type { Document } from "mongodb";
@@ -144,6 +144,29 @@ export async function prepareDrawing(drawing: Drawing) {
     discard: async () => {
       if (prepared.modelFileId)
         await deleteMongoFile(prepared.modelFileId).catch(() => {});
+    },
+  };
+}
+/** A run-owned copy of the model an analysis used; GridFS upload happens before the transaction. */
+export async function prepareSnapshot(snapshot: ModelSnapshot) {
+  if (!mongoEnabled())
+    return {
+      save: async () => {
+        await save("snapshot", snapshot);
+      },
+      discard: async () => {},
+    };
+  const { model, ...metadata } = snapshot;
+  const bytes = Buffer.from(JSON.stringify(model));
+  if (bytes.length > 80 * 1024 * 1024)
+    throw new HttpError("Parsed drawing exceeds the 80 MB model limit.", 413);
+  const modelFileId = await uploadMongoFile(`${snapshot.id}.model.json`, bytes);
+  return {
+    save: async () => {
+      await mongoSave("snapshot", metadata, modelFileId);
+    },
+    discard: async () => {
+      await deleteMongoFile(modelFileId).catch(() => {});
     },
   };
 }

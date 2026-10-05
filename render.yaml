@@ -16,15 +16,3 @@ services:
         value: "false"
       - key: FORMIQ_SECURE_COOKIES
         value: "true"
-      - key: SMTP_HOST
-        value: smtp.gmail.com
-      - key: SMTP_PORT
-        value: "587"
-      - key: SMTP_SECURE
-        value: "false"
-      - key: SMTP_USER
-        sync: false
-      - key: SMTP_PASSWORD
-        sync: false
-      - key: PASSWORD_RESET_FROM
-        sync: false

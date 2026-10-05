@@ -59,6 +59,26 @@ function converter():
   return executable(oda) ? { kind: "oda", path: oda } : undefined;
 }
 export const converterAvailable = () => Boolean(converter());
+const versions = new Map<string, Promise<string>>();
+/** Converter identity recorded with extracted models; the binary is never given drawing input here. */
+export function converterDescription(): Promise<string | undefined> {
+  const selected = converter();
+  if (!selected) return Promise.resolve(undefined);
+  const key = `${selected.kind}:${selected.path}`;
+  if (!versions.has(key))
+    versions.set(
+      key,
+      selected.kind === "libredwg"
+        ? execute(selected.path, ["--version"], { timeout: 5000, maxBuffer: 64 * 1024 })
+            .then(({ stdout, stderr }) => {
+              const version = `${stdout}${stderr}`.match(/\d+\.\d+(?:\.\d+)?/)?.[0];
+              return `libredwg dwg2dxf ${version ?? "(version unknown)"}`;
+            })
+            .catch(() => "libredwg dwg2dxf (version unknown)")
+        : Promise.resolve(`${selected.kind} converter (version not reported)`),
+    );
+  return versions.get(key)!;
+}
 export async function convertDwg(buffer: Buffer): Promise<string> {
   const selected = converter();
   if (!selected)

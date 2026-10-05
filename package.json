@@ -18,13 +18,13 @@
     "test": "node --import tsx --test tests/*.test.ts",
     "test:e2e": "playwright test",
     "test:mongo": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/test-mongo.mjs",
-    "workspace:manage": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/manage.mjs"
+    "workspace:manage": "node --env-file-if-exists=.env --env-file-if-exists=.env.local scripts/manage.mjs",
+    "compare:check": "node --import tsx scripts/compare-check.ts"
   },
   "dependencies": {
     "lucide-react": "0.577.0",
     "mongodb": "6.20.0",
     "next": "16.2.7",
-    "nodemailer": "10.0.13",
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "zod": "4.3.6"

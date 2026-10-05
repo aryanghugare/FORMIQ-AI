@@ -66,7 +66,7 @@ test("upload → CAD analysis → designer review → reports and persistence", 
     page.getByRole("heading", { name: "Drawing comparison" }),
   ).toBeVisible();
   await expect(
-    page.getByText("5 checks · 4 findings · Tolerance 1 mm"),
+    page.getByText(/14 checks · \d+ findings · Tolerance 1 mm/),
   ).toBeVisible();
   await page.screenshot({
     path: "test-results/review-desktop.png",
