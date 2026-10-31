@@ -34,6 +34,7 @@ import {
 import { HttpError } from "@/lib/errors";
 import { readJson, readMultipart } from "@/lib/request-body";
 import { parseDxf, PARSER_VERSION } from "@/lib/cad";
+import { decodeDxf } from "@/lib/dxf-encoding";
 import { loadWorkspace } from "@/lib/workspace";
 import { analyze, RULES } from "@/lib/analysis";
 import { issueCsv, reportHtml } from "@/lib/reports";
@@ -123,7 +124,7 @@ async function runModels(run: AnalysisRun) {
   };
 }
 async function extract(format: Drawing["format"], buffer: Buffer) {
-  if (format === "DXF") return parseDxf(buffer.toString("utf8"));
+  if (format === "DXF") return parseDxf(decodeDxf(buffer));
   const model = parseDxf(await convertDwg(buffer));
   model.converter = await converterDescription();
   return model;

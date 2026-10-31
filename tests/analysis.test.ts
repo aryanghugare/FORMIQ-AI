@@ -191,13 +191,14 @@ test("incomplete dimension endpoints never produce an invented distance to origi
   assert.equal(model.measurements.length, 0);
   assert.ok(model.warnings.some((w) => w.includes("complete endpoints")));
 });
-test("3D lines and elevated inserts are excluded from planar review", () => {
+test("elevated lines are projected onto the plan with a warning instead of disappearing", () => {
   const model = parseDxf(
     fixture(
       "0\nLINE\n8\nWALLS\n10\n0\n20\n0\n30\n20\n11\n500\n21\n0\n31\n20\n",
     ),
   );
-  assert.equal(model.entities.length, 0);
+  assert.equal(model.entities.length, 1);
+  assert.deepEqual(model.entities[0].points, [{ x: 0, y: 0 }, { x: 500, y: 0 }]);
   assert.ok(model.warnings.some((w) => w.includes("Z coordinates")));
 });
 test("invalid and overflowing radii cannot reach the SVG renderer", () => {

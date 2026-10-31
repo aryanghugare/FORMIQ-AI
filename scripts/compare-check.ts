@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { createHash } from "node:crypto";
 import { basename, extname } from "node:path";
 import { parseDxf } from "../lib/cad";
+import { decodeDxf } from "../lib/dxf-encoding";
 import { convertDwg, converterDescription } from "../lib/converter";
 import { analyze } from "../lib/analysis";
 import type { Drawing, Project } from "../lib/types";
@@ -15,7 +16,7 @@ async function main() {
   for (const [index, path] of [before, after].entries()) {
     const bytes = readFileSync(path), extension = extname(path).toLowerCase();
     if (![".dxf", ".dwg"].includes(extension)) throw new Error("Use DWG or ASCII DXF files.");
-    const model = parseDxf(extension === ".dwg" ? await convertDwg(bytes) : bytes.toString("utf8"));
+    const model = parseDxf(extension === ".dwg" ? await convertDwg(bytes) : decodeDxf(bytes));
     if (extension === ".dwg") model.converter = await converterDescription();
     drawings.push({ id: String(index), projectId: project.id, name: basename(path), revision: String(index), discipline: "architecture", format: extension === ".dwg" ? "DWG" : "DXF", size: bytes.length, uploadedAt: "", uploadedBy: "Check", status: "ready", sha256: createHash("sha256").update(bytes).digest("hex"), model });
   }
