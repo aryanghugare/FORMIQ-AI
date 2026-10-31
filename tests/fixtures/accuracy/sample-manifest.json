@@ -1,0 +1,17 @@
+{
+  "tolerance": 1,
+  "radius": 600,
+  "cases": [
+    {
+      "name": "Sample ARCH-L12 Rev.05 -> Rev.06 (changes known from lib/demo.ts)",
+      "previous": "../../../public/samples/ARCH-L12-Rev-05.dxf",
+      "latest": "../../../public/samples/ARCH-L12-Rev-06.dxf",
+      "expected": [
+        { "id": "D14 door 900 -> 1000", "x": 5300, "y": 4190 },
+        { "id": "W03 window 1200 -> 1500", "x": 1950, "y": 8130 },
+        { "id": "B02 beam 450 -> 500", "x": 8650, "y": 4430 },
+        { "id": "D21 door added", "x": 6550, "y": 4290 }
+      ]
+    }
+  ]
+}
