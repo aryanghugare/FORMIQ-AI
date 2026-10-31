@@ -1,3 +1,4 @@
+import { decodeDxf } from "./dxf-encoding";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import {
@@ -129,7 +130,7 @@ export async function convertDwg(buffer: Buffer): Promise<string> {
     const outputPath = join(output, filename);
     if ((await stat(outputPath)).size > 50 * 1024 * 1024)
       throw new Error("Converted DXF exceeds the 50 MB processing limit.");
-    return await readFile(outputPath, "utf8");
+    return decodeDxf(await readFile(outputPath));
   } catch (e) {
     if (e instanceof Error && "code" in e)
       throw new Error(
