@@ -22,7 +22,7 @@ const MAX_SAMPLED_SEGMENTS = 400;
 const MAX_BUCKET = 80;
 
 /** Least-squares rigid fit (2D Kabsch) for point correspondences. */
-function rigidFit(pairs: [{ x: number; y: number }, { x: number; y: number }][]): RigidTransform | undefined {
+function rigidFit(pairs: [{ x: number; y: number }, { x: number; y: number }][], fixedRotation?: number): RigidTransform | undefined {
   if (pairs.length < 2) return;
   let px = 0, py = 0, qx = 0, qy = 0;
   for (const [p, q] of pairs) {
@@ -35,7 +35,7 @@ function rigidFit(pairs: [{ x: number; y: number }, { x: number; y: number }][])
     cos += ax * bx + ay * by;
     sin += ax * by - ay * bx;
   }
-  let rotation = (Math.atan2(sin, cos) * 180) / Math.PI;
+  let rotation = fixedRotation ?? (Math.atan2(sin, cos) * 180) / Math.PI;
   const snapped = Math.round(rotation / 90) * 90;
   if (Math.abs(rotation - snapped) < 1e-4) rotation = snapped;
   const r = (rotation * Math.PI) / 180;
@@ -169,7 +169,15 @@ function evaluate(
   const refined = rigidFit(pairs);
   const base = score(candidate);
   const better = refined ? score(refined) : undefined;
-  const chosen = better && better.matched >= base.matched ? { t: refined!, ...better } : { t: candidate, ...base };
+  let chosen = better && better.matched >= base.matched ? { t: refined!, ...better } : { t: candidate, ...base };
+  // Least squares leaves a trace of rotation on a pure translation; report the exact right angle
+  // whenever it explains the geometry just as well.
+  const rightAngle = Math.round(chosen.t.rotation / 90) * 90;
+  if (chosen.t.rotation !== rightAngle && Math.abs(chosen.t.rotation - rightAngle) < 0.05) {
+    const exact = rigidFit(pairs, rightAngle);
+    const exactScore = exact ? score(exact) : undefined;
+    if (exactScore && exactScore.matched >= chosen.matched) chosen = { t: exact!, ...exactScore };
+  }
   return {
     transform: chosen.t,
     matched: chosen.matched,

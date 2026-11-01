@@ -13,7 +13,6 @@ import {
   mongoOptions,
   mongoTransaction,
 } from "./mongo";
-import { HttpError } from "./errors";
 import type { User } from "./types";
 const digest = (value: string) =>
   createHash("sha256").update(value).digest("hex");
@@ -77,41 +76,47 @@ export async function mongoUserForToken(
     ? { id: String(user._id), name: user.name, email: user.email }
     : undefined;
 }
+/** Counts one attempt against a key; false once the limit is exceeded within the window. */
+export async function mongoConsumeLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<boolean> {
+  await initializeMongo();
+  const now = new Date();
+  const expired = { $lte: [{ $ifNull: ["$expiresAt", new Date(0)] }, now] };
+  const attempt = await (await mongoDatabase())
+    .collection<Document & { _id: string }>("login_attempts")
+    .findOneAndUpdate(
+      { _id: digest(key) },
+      [
+        {
+          $set: {
+            count: {
+              $cond: [expired, 1, { $add: [{ $ifNull: ["$count", 0] }, 1] }],
+            },
+            expiresAt: {
+              $cond: [expired, new Date(now.getTime() + windowMs), "$expiresAt"],
+            },
+          },
+        },
+      ],
+      { upsert: true, returnDocument: "after" },
+    );
+  return (attempt?.count ?? 0) <= limit;
+}
+export async function mongoClearLimits(keys: string[]) {
+  await (await mongoDatabase())
+    .collection<Document & { _id: string }>("login_attempts")
+    .deleteMany({ _id: { $in: keys.map(digest) } });
+}
 export async function mongoLogin(
   email: string,
   password: string,
 ): Promise<{ user: User; token: string } | undefined> {
   await initializeMongo();
   const db = await mongoDatabase(),
-    key = email.trim().toLowerCase(),
-    now = new Date();
-  const attempts = db.collection<Document & { _id: string }>("login_attempts");
-  const expired = { $lte: [{ $ifNull: ["$expiresAt", new Date(0)] }, now] };
-  const attempt = await attempts.findOneAndUpdate(
-    { _id: digest(key) },
-    [
-      {
-        $set: {
-          count: {
-            $cond: [expired, 1, { $add: [{ $ifNull: ["$count", 0] }, 1] }],
-          },
-          expiresAt: {
-            $cond: [
-              expired,
-              new Date(now.getTime() + 15 * 60000),
-              "$expiresAt",
-            ],
-          },
-        },
-      },
-    ],
-    { upsert: true, returnDocument: "after" },
-  );
-  if ((attempt?.count ?? 0) > 10)
-    throw new HttpError(
-      "Too many login attempts. Try again in 15 minutes.",
-      429,
-    );
+    key = email.trim().toLowerCase();
   const account = await db
     .collection<Document & { _id: string }>("users")
     .findOne({ email: key });
@@ -134,7 +139,6 @@ export async function mongoLogin(
     credentialVersion: account.salt,
     expiresAt: new Date(Date.now() + 7 * 86400000),
   });
-  await attempts.deleteOne({ _id: digest(key) });
   return {
     token,
     user: { id: String(account._id), name: account.name, email: account.email },

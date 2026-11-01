@@ -11,4 +11,7 @@ services:
       FORMIQ_DEMO: "false"
       FORMIQ_SECURE_COOKIES: "true"
       FORMIQ_APP_URL: ${FORMIQ_APP_URL:-}
+      FORMIQ_TIME_ZONE: ${FORMIQ_TIME_ZONE:-}
+      # Your HTTPS reverse proxy; adjust if there are more proxies in front of it.
+      FORMIQ_TRUSTED_PROXY_HOPS: ${FORMIQ_TRUSTED_PROXY_HOPS:-1}
     restart: unless-stopped

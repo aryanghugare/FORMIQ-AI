@@ -10,7 +10,7 @@ import type {
 } from "./types";
 
 /** Bump when extraction output changes so analyses can re-extract retained originals. */
-export const PARSER_VERSION = "dxf-2.2.0";
+export const PARSER_VERSION = "dxf-2.3.0";
 
 type Pair = { code: number; value: string };
 type RecordEntity = { type: string; fields: Pair[] };
@@ -132,6 +132,115 @@ function splinePoint(degree: number, knots: number[], control: Point[], weights:
   return { x: p.x / p.w, y: p.y / p.w };
 }
 const MAX_UNSUPPORTED_RECORDS = 1000;
+type HatchPath = { pts: Point[]; bulges: number[]; closed: boolean };
+/**
+ * Boundary loops of a HATCH, read in file order because its group codes repeat with different
+ * meanings in each section. Undefined when the structure is not understood. The fill itself is not read.
+ */
+function hatchPaths(fields: Pair[]): HatchPath[] | undefined {
+  const start = fields.findIndex((f) => f.code === 91);
+  if (start < 0) return;
+  let i = start + 1;
+  const peek = (code: number) => fields[i]?.code === code;
+  const read = (code: number) => {
+    if (!peek(code)) throw new Error("Unexpected HATCH structure.");
+    const value = Number(fields[i++].value);
+    if (!Number.isFinite(value)) throw new Error("Invalid numeric DXF group value.");
+    return value;
+  };
+  const readPoint = (x: number, y: number) => ({ x: read(x), y: read(y) });
+  // Clockwise edges store mirrored angles; the sweep runs backwards from them.
+  const sweepOf = (startDeg: number, endDeg: number, ccw: boolean) => {
+    const from = ccw ? startDeg : 360 - startDeg,
+      to = ccw ? endDeg : 360 - endDeg;
+    const span = ccw ? ((to - from) % 360 + 360) % 360 || 360 : -(((from - to) % 360 + 360) % 360 || 360);
+    return { from, span, steps: Math.max(4, Math.ceil((Math.abs(span) / 360) * 96)) };
+  };
+  try {
+    const count = Number(fields[start].value);
+    const paths: HatchPath[] = [];
+    for (let n = 0; n < count; n++) {
+      const flags = read(92);
+      if (flags & 2) {
+        const hasBulge = read(72) !== 0;
+        const closed = read(73) !== 0;
+        const total = read(93);
+        const pts: Point[] = [];
+        const bulges: number[] = [];
+        for (let k = 0; k < total; k++) {
+          pts.push(readPoint(10, 20));
+          bulges.push(hasBulge && peek(42) ? read(42) : 0);
+        }
+        paths.push({ pts, bulges, closed });
+      } else {
+        const pts: Point[] = [];
+        const append = (p: Point) => {
+          const last = pts.at(-1);
+          if (!last || Math.hypot(last.x - p.x, last.y - p.y) > 1e-9) pts.push(p);
+        };
+        const edges = read(93);
+        for (let e = 0; e < edges; e++) {
+          const type = read(72);
+          if (type === 1) {
+            append(readPoint(10, 20));
+            append(readPoint(11, 21));
+          } else if (type === 2) {
+            const c = readPoint(10, 20), radius = read(40);
+            const startDeg = read(50), endDeg = read(51);
+            const { from, span, steps } = sweepOf(startDeg, endDeg, read(73) !== 0);
+            for (let k = 0; k <= steps; k++) {
+              const a = ((from + (span * k) / steps) * Math.PI) / 180;
+              append({ x: c.x + radius * Math.cos(a), y: c.y + radius * Math.sin(a) });
+            }
+          } else if (type === 3) {
+            const c = readPoint(10, 20), major = readPoint(11, 21), ratio = read(40);
+            const startDeg = read(50), endDeg = read(51);
+            const { from, span, steps } = sweepOf(startDeg, endDeg, read(73) !== 0);
+            for (let k = 0; k <= steps; k++) {
+              const a = ((from + (span * k) / steps) * Math.PI) / 180;
+              append({
+                x: c.x + major.x * Math.cos(a) - major.y * ratio * Math.sin(a),
+                y: c.y + major.y * Math.cos(a) + major.x * ratio * Math.sin(a),
+              });
+            }
+          } else if (type === 4) {
+            const degree = read(94);
+            read(73);
+            read(74);
+            const knotCount = read(95), controlCount = read(96);
+            const knots: number[] = [], control: Point[] = [], weights: number[] = [];
+            for (let k = 0; k < knotCount; k++) knots.push(read(40));
+            for (let k = 0; k < controlCount; k++) {
+              control.push(readPoint(10, 20));
+              if (peek(42)) weights.push(read(42));
+            }
+            const fit: Point[] = [];
+            // Group 97 here counts fit points; after the last edge it counts source objects instead.
+            if (peek(97) && (fields[i + 1]?.code === 11 || fields[i + 1]?.code === 12)) {
+              const fitCount = read(97);
+              for (let k = 0; k < fitCount; k++) fit.push(readPoint(11, 21));
+              if (peek(12)) readPoint(12, 22);
+              if (peek(13)) readPoint(13, 23);
+            }
+            const lo = knots[degree], hi = knots[controlCount];
+            if (degree >= 1 && controlCount > degree && knotCount === controlCount + degree + 1 && hi > lo) {
+              const steps = Math.min(2000, Math.max(16, (controlCount - degree) * 16));
+              for (let k = 0; k <= steps; k++)
+                append(splinePoint(degree, knots, control, weights.length === controlCount ? weights : [], lo + ((hi - lo) * k) / steps));
+            } else if (fit.length > 1) fit.forEach(append);
+            else throw new Error("Unreadable HATCH spline.");
+          } else throw new Error("Unknown HATCH edge type.");
+        }
+        paths.push({ pts, bulges: pts.map(() => 0), closed: true });
+      }
+      const sources = peek(97) ? read(97) : 0;
+      for (let k = 0; k < sources && peek(330); k++) i++;
+    }
+    return paths;
+  } catch {
+    return;
+  }
+}
 
 /** Focused ASCII DXF parser. Coordinates and measurements are normalized to millimetres. */
 export function parseDxf(content: string): CadModel {
@@ -362,14 +471,14 @@ export function parseDxf(content: string): CadModel {
       // Object coordinate system (arbitrary axis algorithm): for normal (0,0,-1), X is reversed.
       const ocs: Transform = flipped ? mirrorX : transform;
       const mirrored = transformMirrors !== flipped;
-      const pushPolyline = (pts: Point[], bulges: number[], closed: boolean) => {
+      const pushPolyline = (pts: Point[], bulges: number[], closed: boolean, entityId = id) => {
         const curved = bulges.some((b) => b !== 0);
         if (curved && !keepsCircles) {
-          entities.push({ id, type: "polyline", layer, points: tessellate(pts, bulges, closed).map((p) => vertex(ocs(p))), closed, ...context });
+          entities.push({ id: entityId, type: "polyline", layer, points: tessellate(pts, bulges, closed).map((p) => vertex(ocs(p))), closed, ...context });
           return;
         }
         entities.push({
-          id,
+          id: entityId,
           type: "polyline",
           layer,
           points: pts.map((p) => vertex(ocs(p))),
@@ -440,6 +549,17 @@ export function parseDxf(content: string): CadModel {
               handle ? `${handle}${copy}>` : handlePrefix,
             );
           }
+        continue;
+      }
+      if (r.type === "HATCH") {
+        const paths = hatchPaths(r.fields)?.filter((path) => path.pts.length > 1);
+        if (!paths?.length) {
+          warnings.add("Some hatches have boundaries that could not be read; they were excluded.");
+          skip(r, layer, "unreadable hatch boundary", transform);
+          continue;
+        }
+        warnings.add("Hatch boundaries are compared as outlines; fill patterns and colours are not compared.");
+        paths.forEach((path, n) => pushPolyline(path.pts, path.bulges, path.closed, `${id}-b${n}`));
         continue;
       }
       if (r.type === "LINE")

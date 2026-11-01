@@ -2,9 +2,11 @@ services:
   formiq:
     build: .
     ports:
-      - "3000:3000"
+      # Demo data: reachable from this computer only.
+      - "127.0.0.1:3000:3000"
     environment:
       FORMIQ_DEMO: "true"
+      FORMIQ_DEMO_PASSWORD: ${FORMIQ_DEMO_PASSWORD:?Set FORMIQ_DEMO_PASSWORD (12-200 characters)}
       FORMIQ_SECURE_COOKIES: "false"
     volumes:
       - formiq-data:/app/data

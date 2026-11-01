@@ -238,8 +238,16 @@ test("full authenticated API workflow persists CAD analysis and designer review"
     1000,
   );
 
+  // Later analyses have run: this run's findings are no longer sent with the workspace.
   assert.equal(
-    workspace.issues.find((i: Issue) => i.id === issue.id).status,
+    workspace.issues.find((i: Issue) => i.id === issue.id),
+    undefined,
+  );
+  assert.ok(workspace.reviewCounts[result.run.id] >= 1);
+  const olderIssues = await (await call(`runs/${result.run.id}/issues`)).json();
+  assert.equal(olderIssues.length, result.issues.length);
+  assert.equal(
+    olderIssues.find((i: Issue) => i.id === issue.id).status,
     "accepted",
   );
   // Route params supplied explicitly to mirror Next routing behavior.

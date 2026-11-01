@@ -11,6 +11,8 @@ import { cookies } from "next/headers";
 import { db, transaction } from "./db";
 import { mongoEnabled } from "./mongo";
 import {
+  mongoClearLimits,
+  mongoConsumeLimit,
   mongoLogin,
   mongoLogout,
   mongoUserForToken,
@@ -65,33 +67,86 @@ export async function register(
   });
   return { user, token };
 }
-export async function login(
-  email: string,
-  password: string,
-): Promise<{ user: User; token: string } | undefined> {
-  if (mongoEnabled()) return mongoLogin(email, password);
-  const key = email.trim().toLowerCase(),
-    now = Date.now();
-  // Reserve an attempt before the asynchronous password derivation. Parallel requests
-  // must not all read the same count and bypass throttling.
+const LOGIN_WINDOW_MS = 15 * 60 * 1000;
+const REGISTRATION_WINDOW_MS = 60 * 60 * 1000;
+/**
+ * With a known client address, failures from one address cannot lock the account for anyone else;
+ * the larger account-wide limit still bounds guessing from many addresses. Checks stop at the first
+ * limit reached, so an address already blocked no longer counts against the account. Without an
+ * address, only the strict account limit is possible.
+ */
+function attemptLimits(account: string, ip?: string): [string, number][] {
+  return ip
+    ? [
+        [`ip:${ip}`, 200],
+        [`${account}|${ip}`, 10],
+        [account, 100],
+      ]
+    : [[account, 10]];
+}
+/** Counts one attempt against a key; false once the limit is exceeded within the window. */
+export async function consumeRateLimit(
+  key: string,
+  limit: number,
+  windowMs: number,
+): Promise<boolean> {
+  if (mongoEnabled()) return mongoConsumeLimit(key, limit, windowMs);
+  const now = Date.now();
   const attempt = db()
     .prepare(
       `INSERT INTO login_attempts (key,count,expires) VALUES (?,1,?)
     ON CONFLICT(key) DO UPDATE SET
       count=CASE WHEN login_attempts.expires>? THEN login_attempts.count+1 ELSE 1 END,
       expires=CASE WHEN login_attempts.expires>? THEN login_attempts.expires ELSE excluded.expires END
-    RETURNING count,expires`,
+    RETURNING count`,
     )
-    .get(key, now + 15 * 60 * 1000, now, now) as {
-    count: number;
-    expires: number;
-  };
-  if (attempt.count > 10)
-    throw new HttpError(
-      "Too many login attempts. Try again in 15 minutes.",
-      429,
-    );
+    .get(key, now + windowMs, now, now) as { count: number };
   db().prepare("DELETE FROM login_attempts WHERE expires<=?").run(now);
+  return attempt.count <= limit;
+}
+/** 10 accounts per address per hour; a shared budget when the address is unknown. */
+export async function reserveRegistration(ip?: string) {
+  const allowed = await consumeRateLimit(
+    `register:${ip ?? "unknown"}`,
+    ip ? 10 : 100,
+    REGISTRATION_WINDOW_MS,
+  );
+  if (!allowed)
+    throw new HttpError("Too many new accounts. Try again later.", 429);
+}
+export async function login(
+  email: string,
+  password: string,
+  ip?: string,
+): Promise<{ user: User; token: string } | undefined> {
+  const account = email.trim().toLowerCase();
+  // Reserve attempts before the asynchronous password derivation. Parallel requests
+  // must not all read the same count and bypass throttling.
+  const limits = attemptLimits(account, ip);
+  for (const [limitKey, limit] of limits)
+    if (!(await consumeRateLimit(limitKey, limit, LOGIN_WINDOW_MS)))
+      throw new HttpError(
+        "Too many login attempts. Try again in 15 minutes.",
+        429,
+      );
+  const session = mongoEnabled()
+    ? await mongoLogin(email, password)
+    : await localLogin(email, password);
+  if (session) {
+    const cleared = limits.map(([limitKey]) => limitKey).filter((k) => !k.startsWith("ip:"));
+    if (mongoEnabled()) await mongoClearLimits(cleared);
+    else
+      for (const limitKey of cleared)
+        db().prepare("DELETE FROM login_attempts WHERE key=?").run(limitKey);
+  }
+  return session;
+}
+async function localLogin(
+  email: string,
+  password: string,
+): Promise<{ user: User; token: string } | undefined> {
+  const key = email.trim().toLowerCase(),
+    now = Date.now();
   const user = db()
     .prepare("SELECT * FROM users WHERE email=?")
     .get(key) as unknown as (User & { salt: string; hash: string }) | undefined;
@@ -104,13 +159,12 @@ export async function login(
   if (!user || !timingSafeEqual(hash, Buffer.from(user.hash, "hex"))) {
     return;
   }
-  // A password reset may have completed while scrypt was running.
+  // An operator password reset may have completed while scrypt was running.
   if (
     db().prepare("SELECT salt FROM users WHERE id=?").get(user.id)?.salt !==
     user.salt
   )
     return;
-  db().prepare("DELETE FROM login_attempts WHERE key=?").run(key);
   db().prepare("DELETE FROM sessions WHERE expires<=?").run(now);
   const token = randomBytes(32).toString("hex");
   db()

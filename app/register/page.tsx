@@ -4,5 +4,5 @@ import Login from "@/components/login";
 export const dynamic = "force-dynamic";
 export default async function Page() {
   if (await currentUser()) redirect("/");
-  return <Login demo={false} signup />;
+  return <Login signup />;
 }

@@ -5,6 +5,7 @@ import { randomUUID, scryptSync, randomBytes } from "node:crypto";
 import { parseDxf } from "./cad";
 import { analyze } from "./analysis";
 import { demoDxf, demoMemory } from "./demo";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./password-policy";
 import { z } from "zod";
 import type { AuditEvent, Drawing, Project } from "./types";
 export const demoEnabled = () =>
@@ -12,6 +13,43 @@ export const demoEnabled = () =>
   (process.env.FORMIQ_DEMO === "true" ||
     (process.env.NODE_ENV !== "production" &&
       process.env.FORMIQ_DEMO !== "false"));
+const DEMO_EMAIL = "designer@formiq.ai";
+// Local development only. A production demo must set FORMIQ_DEMO_PASSWORD.
+const DEV_DEMO_PASSWORD = "Formiq@2026";
+const production = () => process.env.NODE_ENV === "production";
+const demoPassword = () =>
+  process.env.FORMIQ_DEMO_PASSWORD ||
+  (production() ? "" : DEV_DEMO_PASSWORD);
+/** Credentials safe to show on the login page: only the local development default. */
+export const publicDemoCredentials = () =>
+  demoEnabled() &&
+  !production() &&
+  !process.env.FORMIQ_DEMO_PASSWORD &&
+  !process.env.FORMIQ_ADMIN_EMAIL &&
+  !process.env.FORMIQ_ADMIN_PASSWORD
+    ? { email: DEMO_EMAIL, password: DEV_DEMO_PASSWORD }
+    : undefined;
+/** Production data created before FORMIQ_DEMO_PASSWORD may still accept the published password. */
+function retirePublishedDemoPassword(database: DatabaseSync) {
+  if (!production()) return;
+  const account = database
+    .prepare("SELECT id,salt,hash FROM users WHERE email=?")
+    .get(DEMO_EMAIL) as { id: string; salt: string; hash: string } | undefined;
+  if (
+    !account ||
+    scryptSync(DEV_DEMO_PASSWORD, account.salt, 64).toString("hex") !==
+      account.hash
+  )
+    return;
+  // Without a configured replacement the account is locked; reset it with scripts/manage.mjs.
+  const replacement =
+    process.env.FORMIQ_DEMO_PASSWORD || randomBytes(32).toString("hex");
+  const salt = randomBytes(16).toString("hex");
+  database
+    .prepare("UPDATE users SET salt=?,hash=? WHERE id=?")
+    .run(salt, scryptSync(replacement, salt, 64).toString("hex"), account.id);
+  database.prepare("DELETE FROM sessions WHERE userId=?").run(account.id);
+}
 export const dataDir = () => resolve(process.env.FORMIQ_DATA_DIR || ".formiq");
 let instance: DatabaseSync | undefined;
 export function db() {
@@ -60,17 +98,18 @@ export function db() {
     if (!count.count) {
       const email =
         process.env.FORMIQ_ADMIN_EMAIL ||
-        (demoEnabled() ? "designer@formiq.ai" : "");
+        (demoEnabled() ? DEMO_EMAIL : "");
       const password =
         process.env.FORMIQ_ADMIN_PASSWORD ||
-        (demoEnabled() ? "Formiq@2026" : "");
+        (demoEnabled() ? demoPassword() : "");
       if (
         !z.email().max(160).safeParse(email.trim()).success ||
-        password.length < 10 ||
-        password.length > 200
+        (password !== DEV_DEMO_PASSWORD &&
+          (password.length < MIN_PASSWORD_LENGTH ||
+            password.length > MAX_PASSWORD_LENGTH))
       )
         throw new Error(
-          "Set FORMIQ_ADMIN_EMAIL and FORMIQ_ADMIN_PASSWORD (10–200 characters), or enable FORMIQ_DEMO.",
+          `Set FORMIQ_ADMIN_EMAIL and FORMIQ_ADMIN_PASSWORD (${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} characters), or enable FORMIQ_DEMO (production also needs FORMIQ_DEMO_PASSWORD).`,
         );
       const salt = randomBytes(16).toString("hex");
       instance
@@ -83,6 +122,7 @@ export function db() {
           scryptSync(password, salt, 64).toString("hex"),
         );
     }
+    retirePublishedDemoPassword(instance);
     if (
       demoEnabled() &&
       !instance.prepare("SELECT id FROM records WHERE id='demo-project'").get()

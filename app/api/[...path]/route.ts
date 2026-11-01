@@ -17,12 +17,15 @@ import {
   updateDrawingInfo,
   removeDrawingRecord,
   removeDrawingFiles,
+  issuesForRuns,
+  drawingMetadata,
 } from "@/lib/store";
 import {
   userForToken,
   login,
   register,
   logout,
+  reserveRegistration,
   SESSION_COOKIE,
   secureCookie,
 } from "@/lib/auth";
@@ -33,10 +36,13 @@ import {
 } from "@/lib/converter";
 import { HttpError } from "@/lib/errors";
 import { readJson, readMultipart } from "@/lib/request-body";
-import { parseDxf, PARSER_VERSION } from "@/lib/cad";
+import { PARSER_VERSION } from "@/lib/cad";
+import { analyzeInWorker, parseInWorker } from "@/lib/cad-tasks";
+import { clientIp } from "@/lib/client-ip";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 import { decodeDxf } from "@/lib/dxf-encoding";
 import { loadWorkspace } from "@/lib/workspace";
-import { analyze, RULES } from "@/lib/analysis";
+import { RULES } from "@/lib/analysis";
 import { issueCsv, reportHtml } from "@/lib/reports";
 import { withOwner } from "@/lib/ownership";
 import { allowedWriteOrigin } from "@/lib/request-origin";
@@ -124,8 +130,8 @@ async function runModels(run: AnalysisRun) {
   };
 }
 async function extract(format: Drawing["format"], buffer: Buffer) {
-  if (format === "DXF") return parseDxf(decodeDxf(buffer));
-  const model = parseDxf(await convertDwg(buffer));
+  if (format === "DXF") return parseInWorker(decodeDxf(buffer));
+  const model = await parseInWorker(await convertDwg(buffer));
   model.converter = await converterDescription();
   return model;
 }
@@ -173,13 +179,15 @@ async function handler(
           email: z.string().trim().email().max(160),
           password: z
             .string()
-            .min(signingUp ? 10 : 1)
-            .max(200),
+            .min(signingUp ? MIN_PASSWORD_LENGTH : 1)
+            .max(MAX_PASSWORD_LENGTH),
         })
         .parse(await readJson(request));
+      const ip = clientIp(request.headers);
+      if (signingUp) await reserveRegistration(ip);
       const result = signingUp
         ? await register(input.name!, input.email, input.password)
-        : await login(input.email, input.password);
+        : await login(input.email, input.password, ip);
       if (!result) throw new HttpError("Email or password is incorrect.", 401);
       const response = NextResponse.json(
         { user: result.user },
@@ -502,16 +510,18 @@ async function handler(
           })
           .strict()
           .parse(await readJson(request));
-        // Re-extract models from an older parser before the transaction: DWG
-        // conversion can outlast a MongoDB transaction. Originals are immutable;
-        // the drawing record is left untouched and the run keeps its own snapshot.
+        // Re-extraction and comparison run before the transaction: either can outlast
+        // MongoDB's transaction time limit. Originals are immutable; the drawing record
+        // is left untouched and the run keeps its own snapshot.
         await projectFor(input.projectId);
         const runId = randomUUID();
         const refreshed = new Map<string, Drawing["model"]>();
         const hashes = new Map<string, string | undefined>();
+        const loaded = new Map<string, Drawing>();
         const notes: string[] = [];
         for (const id of new Set([input.oldId, input.newId])) {
           const drawing = await drawingFor(id);
+          loaded.set(id, drawing);
           if (drawing.projectId !== input.projectId)
             throw new HttpError("All drawings must belong to this project.");
           if (drawing.status !== "ready" || !drawing.model) continue;
@@ -539,7 +549,7 @@ async function handler(
         }
         const snapshotModels = new Map(refreshed);
         for (const id of new Set([input.oldId, input.newId])) {
-          if (!snapshotModels.has(id)) snapshotModels.set(id, (await drawingFor(id)).model);
+          if (!snapshotModels.has(id)) snapshotModels.set(id, loaded.get(id)!.model);
         }
         const snapshots = new Map<string, Awaited<ReturnType<typeof prepareSnapshot>> & { id: string }>();
         try {
@@ -562,40 +572,59 @@ async function handler(
           throw error;
         }
         try {
-          const result = await transaction(async () => {
+          const project = await projectFor(input.projectId);
+          const previous = loaded.get(input.oldId)!;
+          const latest = loaded.get(input.newId)!;
+          const source = (drawing: Drawing, role: RunSource["role"]): RunSource => {
+            const model = snapshotModels.get(drawing.id) ?? drawing.model;
+            const snapshot = snapshots.get(drawing.id);
+            return {
+              drawingId: drawing.id,
+              role,
+              name: drawing.name,
+              revision: drawing.revision,
+              ...(hashes.get(drawing.id) ? { sha256: hashes.get(drawing.id) } : {}),
+              modelSha256: model ? sha256(JSON.stringify(model)) : "",
+              ...(model?.parserVersion ? { parserVersion: model.parserVersion } : {}),
+              ...(model?.converter ? { converter: model.converter } : {}),
+              model: snapshot ? "snapshot" : "drawing",
+              ...(snapshot ? { snapshotId: snapshot.id } : {}),
+              reextracted: refreshed.has(drawing.id),
+            };
+          };
+          const result = await analyzeInWorker(
+            project,
+            { ...previous, model: snapshotModels.get(previous.id) ?? previous.model },
+            { ...latest, model: snapshotModels.get(latest.id) ?? latest.model },
+            user.name,
+            {
+              runId,
+              warnings: notes,
+              sources: [source(previous, "previous"), source(latest, "latest")],
+            },
+          );
+          await transaction(async () => {
+            // The comparison ran outside this transaction: its inputs must still hold.
             for (const id of new Set([input.oldId, input.newId]))
               await lockDrawing(id);
-            const project = await projectFor(input.projectId);
-            const previous = await drawingFor(input.oldId);
-            const latest = await drawingFor(input.newId);
-            const source = (drawing: Drawing, role: RunSource["role"]): RunSource => {
-              const model = snapshotModels.get(drawing.id) ?? drawing.model;
-              const snapshot = snapshots.get(drawing.id);
-              return {
-                drawingId: drawing.id,
-                role,
-                name: drawing.name,
-                revision: drawing.revision,
-                ...(hashes.get(drawing.id) ? { sha256: hashes.get(drawing.id) } : {}),
-                modelSha256: model ? sha256(JSON.stringify(model)) : "",
-                ...(model?.parserVersion ? { parserVersion: model.parserVersion } : {}),
-                ...(model?.converter ? { converter: model.converter } : {}),
-                model: snapshot ? "snapshot" : "drawing",
-                ...(snapshot ? { snapshotId: snapshot.id } : {}),
-                reextracted: refreshed.has(drawing.id),
-              };
-            };
-            const result = analyze(
-              project,
-              { ...previous, model: snapshotModels.get(previous.id) ?? previous.model },
-              { ...latest, model: snapshotModels.get(latest.id) ?? latest.model },
-              user.name,
-              {
-                runId,
-                warnings: notes,
-                sources: [source(previous, "previous"), source(latest, "latest")],
-              },
-            );
+            const currentProject = await projectFor(input.projectId);
+            const unchanged =
+              currentProject.tolerance === project.tolerance &&
+              currentProject.bomReleased === project.bomReleased;
+            for (const drawing of [previous, latest]) {
+              const current = await drawingMetadata(drawing.id);
+              if (!current) throw new HttpError("Drawing not found.", 404);
+              if (
+                !unchanged ||
+                current.name !== drawing.name ||
+                current.revision !== drawing.revision ||
+                current.discipline !== drawing.discipline
+              )
+                throw new HttpError(
+                  "The project or a drawing changed during analysis. Run the analysis again.",
+                  409,
+                );
+            }
             for (const s of snapshots.values()) await s.save();
             await save("run", result.run);
             for (const issue of result.issues) await save("issue", issue);
@@ -605,7 +634,6 @@ async function handler(
               "Analysis completed",
               `${result.issues.length} findings across ${result.run.checks} checks.`,
             );
-            return result;
           });
           return NextResponse.json(result, { status: 201 });
         } catch (error) {
@@ -628,6 +656,18 @@ async function handler(
         const run = await get<AnalysisRun>("run", path[1]);
         if (!run) throw new HttpError("Analysis not found.", 404);
         return NextResponse.json(await runModels(run), {
+          headers: { "Cache-Control": "private, no-store" },
+        });
+      }
+      if (
+        path[0] === "runs" &&
+        path.length === 3 &&
+        path[2] === "issues" &&
+        method === "GET"
+      ) {
+        const run = await get<AnalysisRun>("run", path[1]);
+        if (!run) throw new HttpError("Analysis not found.", 404);
+        return NextResponse.json(await issuesForRuns([run.id]), {
           headers: { "Cache-Control": "private, no-store" },
         });
       }
@@ -716,9 +756,9 @@ async function handler(
           run = runId ? runs.find((r) => r.id === runId) : runs[0];
         if (!run)
           throw new HttpError("Run an analysis before generating a report.");
-        const issues = (await list<Issue>("issue", project.id))
-          .filter((i) => i.runId === run.id)
-          .sort((a, b) => a.number - b.number);
+        const issues = (await issuesForRuns([run.id])).sort(
+          (a, b) => a.number - b.number,
+        );
         await audit(
           project.id,
           user.name,

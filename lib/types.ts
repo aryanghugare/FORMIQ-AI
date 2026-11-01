@@ -292,4 +292,7 @@ export interface WorkspaceData {
   audit: AuditEvent[];
   converterAvailable: boolean;
   demoEnabled: boolean;
+  /** Accepted or rejected findings per analysis run. `issues` holds only each project's latest run. */
+  reviewCounts: Record<string, number>;
+  timeZone: string;
 }

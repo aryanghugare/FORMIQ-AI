@@ -125,3 +125,42 @@ test("legacy DXF files are decoded with their declared code page", () => {
   const modern = Buffer.from(dxf("0\nTEXT\n8\nNOTE\n10\n0\n20\n0\n40\n100\n1\n가나\n", "", "9\n$ACADVER\n1\nAC1032\n9\n$INSUNITS\n70\n4\n"), "utf8");
   assert.equal(parseDxf(decodeDxf(modern)).entities[0].text, "가나");
 });
+
+const hatchDxf = (body: (string | number)[]) =>
+  [0, "SECTION", 2, "HEADER", 9, "$INSUNITS", 70, 4, 0, "ENDSEC", 0, "SECTION", 2, "ENTITIES", 0, "HATCH", 5, "A1", 8, "FILL", 10, 0, 20, 0, 30, 0, 210, 0, 220, 0, 230, 1, 2, "SOLID", 70, 1, 71, 0, ...body, 75, 0, 76, 1, 98, 1, 10, 7, 20, 7, 0, "ENDSEC", 0, "EOF"].join("\n");
+
+test("hatch polyline boundaries become outlines; the seed point is not read as a vertex", () => {
+  const model = parseDxf(hatchDxf([91, 2,
+    92, 2, 72, 0, 73, 1, 93, 4, 10, 0, 20, 0, 10, 100, 20, 0, 10, 100, 20, 50, 10, 0, 20, 50, 97, 0,
+    92, 3, 72, 1, 73, 1, 93, 2, 10, 200, 20, 0, 42, 1, 10, 300, 20, 0, 42, 1, 97, 1, 330, "FF",
+  ]));
+  assert.deepEqual(model.skippedCounts, {});
+  assert.equal(model.entities.length, 2);
+  assert.ok(model.entities.every((e) => e.type === "polyline" && e.closed && e.layer === "FILL"));
+  assert.deepEqual(model.entities[0].points, [{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 50 }, { x: 0, y: 50 }]);
+  assert.deepEqual(model.entities[1].bulges, [1, 1]);
+  assert.notEqual(model.entities[0].id, model.entities[1].id);
+});
+
+test("hatch edge boundaries sample arcs in the stored direction", () => {
+  const model = parseDxf(hatchDxf([91, 2,
+    92, 1, 93, 2,
+    72, 1, 10, -10, 20, 0, 11, 10, 21, 0,
+    72, 2, 10, 0, 20, 0, 40, 10, 50, 0, 51, 180, 73, 1, 97, 0,
+    92, 1, 93, 1,
+    72, 2, 10, 0, 20, 0, 40, 10, 50, 0, 51, 180, 73, 0, 97, 0,
+  ]));
+  const [upper, lower] = model.entities;
+  assert.ok(upper.closed);
+  assert.ok(upper.points.every((p) => p.y >= -1e-9));
+  assert.ok(upper.points.some((p) => Math.abs(p.y - 10) < 1e-6));
+  // Clockwise edges store mirrored angles: 0-180 clockwise runs through the upper half from 360 down to 180... below the axis.
+  assert.ok(lower.points.some((p) => Math.abs(Math.abs(p.y) - 10) < 1e-6));
+});
+
+test("a hatch boundary that cannot be read is reported as skipped, not dropped silently", () => {
+  const model = parseDxf(hatchDxf([91, 1, 92, 1, 93, 1, 72, 9]));
+  assert.equal(model.entities.length, 0);
+  assert.equal(model.skippedCounts?.["unreadable hatch boundary"], 1);
+  assert.equal(model.unsupported?.[0].type, "HATCH");
+});

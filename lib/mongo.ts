@@ -13,6 +13,7 @@ import { z } from "zod";
 import { HttpError } from "./errors";
 import type { Drawing } from "./types";
 import { ownerId } from "./ownership";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "./password-policy";
 export const mongoEnabled = () => Boolean(process.env.MONGODB_URI?.trim());
 const state = globalThis as typeof globalThis & {
   formiqMongo?: Promise<MongoClient>;
@@ -71,6 +72,9 @@ export async function initializeMongo() {
       await db
         .collection("records")
         .createIndex({ ownerId: 1, kind: 1, projectId: 1 });
+      await db
+        .collection("records")
+        .createIndex({ ownerId: 1, kind: 1, "data.runId": 1 });
       if (
         (await db.collection("users").countDocuments({}, { limit: 1 })) === 0
       ) {
@@ -82,11 +86,11 @@ export async function initializeMongo() {
         if (!email && !password) return;
         if (
           !z.email().max(160).safeParse(email).success ||
-          password.length < 10 ||
-          password.length > 200
+          password.length < MIN_PASSWORD_LENGTH ||
+          password.length > MAX_PASSWORD_LENGTH
         )
           throw new Error(
-            "Configure FORMIQ_ADMIN_EMAIL and FORMIQ_ADMIN_PASSWORD (10–200 characters) for the first MongoDB account.",
+            "Configure FORMIQ_ADMIN_EMAIL and FORMIQ_ADMIN_PASSWORD (${MIN_PASSWORD_LENGTH}–${MAX_PASSWORD_LENGTH} characters) for the first MongoDB account.",
           );
         const salt = randomBytes(16).toString("hex");
         await db.collection<Document & { _id: string }>("users").updateOne(
@@ -218,6 +222,62 @@ export async function mongoList<T>(
     result.push(row.data as T);
   }
   return result;
+}
+/** A record's stored fields, without downloading its model from GridFS. */
+export async function mongoMetadata<T>(
+  kind: string,
+  id: string,
+): Promise<T | undefined> {
+  await initializeMongo();
+  const row = await (await mongoDatabase())
+    .collection<Document & { _id: string }>("records")
+    .findOne({ _id: id, kind, ownerId: ownerId() }, mongoOptions());
+  return row?.data as T | undefined;
+}
+export async function mongoIssuesForRuns<T>(runIds: string[]): Promise<T[]> {
+  await initializeMongo();
+  const rows = await (await mongoDatabase())
+    .collection("records")
+    .find(
+      { kind: "issue", ownerId: ownerId(), "data.runId": { $in: runIds } },
+      mongoOptions(),
+    )
+    .toArray();
+  return rows.map((row) => row.data as T);
+}
+export async function mongoRecent<T>(
+  kind: string,
+  projectId: string,
+  limit: number,
+): Promise<T[]> {
+  await initializeMongo();
+  const rows = await (await mongoDatabase())
+    .collection("records")
+    .find({ kind, ownerId: ownerId(), projectId }, mongoOptions())
+    .sort({ createdAt: -1, _id: -1 })
+    .limit(limit)
+    .toArray();
+  return rows.map((row) => row.data as T);
+}
+export async function mongoReviewCounts(): Promise<Record<string, number>> {
+  await initializeMongo();
+  const rows = await (await mongoDatabase())
+    .collection("records")
+    .aggregate<{ _id: string; count: number }>(
+      [
+        {
+          $match: {
+            kind: "issue",
+            ownerId: ownerId(),
+            "data.status": { $in: ["accepted", "rejected"] },
+          },
+        },
+        { $group: { _id: "$data.runId", count: { $sum: 1 } } },
+      ],
+      mongoOptions(),
+    )
+    .toArray();
+  return Object.fromEntries(rows.map((row) => [row._id, row.count]));
 }
 /** GridFS writes happen BEFORE transactions; MongoDB does not support GridFS inside a transaction. */
 export async function prepareMongoDrawing(

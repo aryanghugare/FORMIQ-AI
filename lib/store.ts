@@ -7,7 +7,11 @@ import {
   initializeMongo,
   mongoDatabase,
   mongoGet,
+  mongoIssuesForRuns,
   mongoList,
+  mongoMetadata,
+  mongoRecent,
+  mongoReviewCounts,
   mongoSave,
   mongoTransaction,
   prepareMongoDrawing,
@@ -16,7 +20,7 @@ import {
   deleteMongoFile,
   mongoOptions,
 } from "./mongo";
-import type { Drawing, AuditEvent, ModelSnapshot } from "./types";
+import type { Drawing, AuditEvent, Issue, ModelSnapshot } from "./types";
 import { ownerId } from "./ownership";
 import { HttpError } from "./errors";
 import type { Document } from "mongodb";
@@ -50,6 +54,52 @@ export async function list<T>(kind: string, projectId?: string): Promise<T[]> {
       ...(projectId === undefined ? [] : [projectId]),
     );
   return rows.map((row) => JSON.parse(row.data as string) as T);
+}
+export async function issuesForRuns(runIds: string[]): Promise<Issue[]> {
+  if (!runIds.length) return [];
+  if (mongoEnabled()) return mongoIssuesForRuns<Issue>(runIds);
+  const scope = localScope();
+  return local
+    .db()
+    .prepare(
+      `SELECT data FROM records WHERE kind='issue' AND ${scope.sql} AND json_extract(data,'$.runId') IN (${runIds.map(() => "?").join(",")}) ORDER BY rowid DESC`,
+    )
+    .all(...scope.parameters, ...runIds)
+    .map((row) => JSON.parse(row.data as string) as Issue);
+}
+export async function recentAudit(
+  projectId: string,
+  limit: number,
+): Promise<AuditEvent[]> {
+  if (mongoEnabled()) return mongoRecent<AuditEvent>("audit", projectId, limit);
+  const scope = localScope();
+  return local
+    .db()
+    .prepare(
+      `SELECT data FROM records WHERE kind='audit' AND ${scope.sql} AND projectId=? ORDER BY rowid DESC LIMIT ?`,
+    )
+    .all(...scope.parameters, projectId, limit)
+    .map((row) => JSON.parse(row.data as string) as AuditEvent);
+}
+export async function reviewCounts(): Promise<Record<string, number>> {
+  if (mongoEnabled()) return mongoReviewCounts();
+  const scope = localScope();
+  const rows = local
+    .db()
+    .prepare(
+      `SELECT json_extract(data,'$.runId') AS runId, COUNT(*) AS count FROM records WHERE kind='issue' AND ${scope.sql} AND json_extract(data,'$.status') IN ('accepted','rejected') GROUP BY runId`,
+    )
+    .all(...scope.parameters);
+  return Object.fromEntries(
+    rows.map((row) => [row.runId as string, row.count as number]),
+  );
+}
+/** Drawing fields without its model, cheap enough to read inside a transaction. */
+export async function drawingMetadata(
+  id: string,
+): Promise<Drawing | undefined> {
+  if (mongoEnabled()) return mongoMetadata<Drawing>("drawing", id);
+  return get<Drawing>("drawing", id);
 }
 export async function drawingSummaries(): Promise<Drawing[]> {
   if (mongoEnabled()) return mongoList<Drawing>("drawing", undefined, true);

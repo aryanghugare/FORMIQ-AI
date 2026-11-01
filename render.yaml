@@ -16,3 +16,6 @@ services:
         value: "false"
       - key: FORMIQ_SECURE_COOKIES
         value: "true"
+      # Set by the Cloudflare edge in front of Render. Without it, limits fall back to per-account.
+      - key: FORMIQ_CLIENT_IP_HEADER
+        value: true-client-ip

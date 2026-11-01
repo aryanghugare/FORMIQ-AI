@@ -52,6 +52,7 @@ import {
   formatTimestamp,
   formatNumber,
   deltaText,
+  setDisplayTimeZone,
 } from "@/lib/format";
 type View =
   | "overview"
@@ -205,6 +206,7 @@ function ModalFrame({
 export default function Workspace({
   initialData,
 }: { initialData?: WorkspaceData } = {}) {
+  setDisplayTimeZone(initialData?.timeZone);
   const [data, setData] = useState<WorkspaceData | undefined>(initialData),
     [loadError, setLoadError] = useState(""),
     [view, setView] = useState<View>("overview"),
@@ -219,6 +221,7 @@ export default function Workspace({
     [notifications, setNotifications] = useState(false),
     [mobileNav, setMobileNav] = useState(false),
     [runId, setRunId] = useState(""),
+    [olderRun, setOlderRun] = useState<{ runId: string; issues: Issue[] }>(),
     [priority, setPriority] = useState("all"),
     [statusFilter, setStatusFilter] = useState("all");
   const toastTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -276,13 +279,32 @@ export default function Workspace({
     [data, projectId],
   );
   const run = runs.find((r) => r.id === runId) ?? runs[0];
-  const issues = useMemo(
-    () =>
-      data?.issues
-        .filter((i) => i.projectId === projectId && i.runId === run?.id)
-        .sort((a, b) => a.number - b.number) ?? [],
-    [data, projectId, run],
-  );
+  const olderRunId = run && run.id !== runs[0]?.id ? run.id : undefined;
+  // The workspace carries findings of each project's latest run; older runs load when selected.
+  useEffect(() => {
+    if (!olderRunId) return;
+    let current = true;
+    api<Issue[]>(`runs/${encodeURIComponent(olderRunId)}/issues`)
+      .then((loaded) => {
+        if (current) setOlderRun({ runId: olderRunId, issues: loaded });
+      })
+      .catch((e) => {
+        if (current) notify(e.message, true);
+      });
+    return () => {
+      current = false;
+    };
+  }, [olderRunId, data, notify]);
+  const issues = useMemo(() => {
+    const source = olderRunId
+      ? olderRun?.runId === olderRunId
+        ? olderRun.issues
+        : []
+      : (data?.issues ?? []);
+    return source
+      .filter((i) => i.projectId === projectId && i.runId === run?.id)
+      .sort((a, b) => a.number - b.number);
+  }, [data, projectId, run, olderRunId, olderRun]);
   const open = issues.filter(
       (i) => i.status === "open" || i.status === "investigating",
     ),
@@ -1581,14 +1603,7 @@ export default function Workspace({
                       </thead>
                       <tbody>
                         {runs.map((r, i) => {
-                          const is = data.issues.filter(
-                              (x) => x.runId === r.id,
-                            ),
-                            reviewCount = is.filter(
-                              (x) =>
-                                x.status === "accepted" ||
-                                x.status === "rejected",
-                            ).length;
+                          const reviewCount = data.reviewCounts[r.id] ?? 0;
                           return (
                             <tr key={r.id}>
                               <td>
@@ -1619,7 +1634,7 @@ export default function Workspace({
                                 </Pill>
                               </td>
                               <td>
-                                {reviewCount} / {is.length}
+                                {reviewCount} / {r.issueCount}
                               </td>
                               <td>
                                 <div className="row-actions">

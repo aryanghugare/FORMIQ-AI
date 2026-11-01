@@ -9,16 +9,18 @@ import {
   EyeOff,
 } from "lucide-react";
 import Link from "next/link";
+import { MAX_PASSWORD_LENGTH, MIN_PASSWORD_LENGTH } from "@/lib/password-policy";
 export default function Login({
   demo,
   signup = false,
 }: {
-  demo: boolean;
+  /** Only ever the local development default; production credentials are never displayed. */
+  demo?: { email: string; password: string };
   signup?: boolean;
 }) {
-  const [email, setEmail] = useState(demo ? "designer@formiq.ai" : ""),
+  const [email, setEmail] = useState(demo?.email ?? ""),
     [name, setName] = useState(""),
-    [password, setPassword] = useState(demo ? "Formiq@2026" : ""),
+    [password, setPassword] = useState(demo?.password ?? ""),
     [showPassword, setShowPassword] = useState(false),
     [error, setError] = useState(""),
     [busy, setBusy] = useState(false);
@@ -145,11 +147,11 @@ export default function Login({
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       required
-                      minLength={signup ? 10 : undefined}
-                      maxLength={200}
+                      minLength={signup ? MIN_PASSWORD_LENGTH : undefined}
+                      maxLength={MAX_PASSWORD_LENGTH}
                       placeholder={
                         signup
-                          ? "At least 10 characters"
+                          ? `At least ${MIN_PASSWORD_LENGTH} characters`
                           : undefined
                       }
                     />
@@ -194,7 +196,9 @@ export default function Login({
                 The credentials above open an illustrative project with real DXF
                 sample drawings and editable review findings.
               </p>
-              <code>designer@formiq.ai · Formiq@2026</code>
+              <code>
+                {demo.email} · {demo.password}
+              </code>
             </div>
           )}
           <div className="approval-note">

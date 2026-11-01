@@ -27,7 +27,7 @@ npm run workspace:manage -- check
 npm run dev
 ```
 
-Open `http://localhost:3000`, choose **Create an account**, and enter your name, email and a password of at least 10 characters. Registration signs you in automatically. You can sign out and return through the normal login screen. Optional `FORMIQ_ADMIN_EMAIL` and `FORMIQ_ADMIN_PASSWORD` values provision an initial account; later environment changes do not reset an existing password.
+Open `http://localhost:3000`, choose **Create an account**, and enter your name, email and a password of at least 12 characters. Registration signs you in automatically. You can sign out and return through the normal login screen. Optional `FORMIQ_ADMIN_EMAIL` and `FORMIQ_ADMIN_PASSWORD` values provision an initial account; later environment changes do not reset an existing password.
 
 
 When `MONGODB_URI` is set, accounts, sessions, projects, findings, history and design memory use MongoDB collections. Original CAD files and parsed models use **GridFS**, including files larger than MongoDB's 16 MB document limit. See [MongoDB's GridFS documentation](https://www.mongodb.com/docs/drivers/node/current/crud/gridfs/). No S3 or Render storage disk is required. Docker only packages and runs the app.
@@ -50,7 +50,7 @@ Tagged dimensions and tagged schedule text retain their existing checks. Ordinar
 
 Every account has its own projects, drawings, findings, reports and design memory. Users cannot read or change another account's data. Existing data from the earlier shared workspace remains with its original account. Findings require designer validation; the app does not approve engineering drawings automatically.
 
-Uploads are limited to 30 MB. ASCII DXF processing works directly. The Docker image includes LibreDWG 0.14 for DWG-to-DXF conversion, with a verified source archive checksum. Original files stay in MongoDB; conversion uses temporary files that are removed afterward. Lines, polylines (including arcs), circles, arcs, ellipses, splines, text, block inserts (including mirrored, non-uniformly scaled and MINSERT arrays) and linear dimensions are extracted. Mirrored entities are read in world coordinates, elevated entities are projected onto the plan with a warning, and pre-2007 DXF text is decoded with its declared code page (for example ANSI_949 Korean). Hatches, leaders, 3D solids and other advanced/custom objects remain unsupported and are listed as skipped; validate the extracted geometry before relying on findings. Analysis is synchronous; use modest drawing sizes and monitor memory/storage usage.
+Uploads are limited to 30 MB. ASCII DXF processing works directly. The Docker image includes LibreDWG 0.14 for DWG-to-DXF conversion, with a verified source archive checksum. Original files stay in MongoDB; conversion uses temporary files that are removed afterward. Lines, polylines (including arcs), circles, arcs, ellipses, splines, text, block inserts (including mirrored, non-uniformly scaled and MINSERT arrays) and linear dimensions are extracted. Mirrored entities are read in world coordinates, elevated entities are projected onto the plan with a warning, and pre-2007 DXF text is decoded with its declared code page (for example ANSI_949 Korean). Hatch boundaries are compared as outlines (fill patterns and colours are not). Leaders, 3D solids and other advanced/custom objects remain unsupported and are listed as skipped; validate the extracted geometry before relying on findings. Parsing and comparison run before the database transaction is opened, so a slow drawing cannot hold a MongoDB transaction open past its time limit; the project or a source drawing changing during analysis is detected and the run is rejected. This work still runs on the request thread, so use modest drawing sizes and monitor memory/storage usage.
 
 ## Start Docker locally
 
@@ -76,13 +76,17 @@ Deploy the complete Next.js application, frontend and API together:
 
 `render.yaml` is a deployment template. Enter the URI privately in Render and allow Render's outbound addresses in Atlas. This single-app setup does not separately deploy the frontend on Vercel.
 
+Login and sign-up limits work per client address only when the app knows a trustworthy one. `render.yaml` reads `FORMIQ_CLIENT_IP_HEADER=true-client-ip`; confirm on your service that this header carries the real address and that a value you send yourself is overwritten. Behind your own proxy use `FORMIQ_TRUSTED_PROXY_HOPS` instead. Limits: 10 failed logins per account and address, 100 per account, 200 per address and 10 sign-ups per address per hour. With no known address, login allows 10 failures per account (which can lock that account for 15 minutes) and sign-up allows 100 per hour overall.
+
+Set `FORMIQ_TIME_ZONE` to an IANA name to change how dates are shown (default `Asia/Kolkata`).
+
 For another Docker host with an HTTPS proxy, supply an untracked `.env.production` file and run:
 
 ```sh
 docker compose --env-file .env.production -f compose.production.yaml up -d --build
 ```
 
-The existing `compose.yaml` is for the local SQLite demo.
+The existing `compose.yaml` is for the local SQLite demo. It is reachable only from your computer and needs `FORMIQ_DEMO_PASSWORD` (12–200 characters). The built-in demo login exists only outside production; on startup, a production database still using it has that password replaced with `FORMIQ_DEMO_PASSWORD`, or is locked until you run `reset-password`.
 
 ## Optional account maintenance
 

@@ -198,7 +198,10 @@ async function main() {
           );
         else db.prepare("DELETE FROM users WHERE id=?").run(existing.id);
       }
-      db.prepare("DELETE FROM login_attempts WHERE key=?").run(email);
+      db.prepare("DELETE FROM login_attempts WHERE key=? OR key LIKE ?").run(
+        email,
+        `${email}|%`,
+      );
       const event = {
         id: randomUUID(),
         projectId: "",

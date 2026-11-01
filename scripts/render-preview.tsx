@@ -18,7 +18,7 @@ const user = db()
   .get() as unknown as import("../lib/types").User;
 for (const [name, component] of [
   ["overview", <Workspace initialData={await loadWorkspace(user)} />],
-  ["login", <Login demo />],
+  ["login", <Login demo={{ email: "designer@formiq.ai", password: "Formiq@2026" }} />],
 ] as const) {
   writeFileSync(
     join(tmpdir(), `formiq-${name}.html`),
